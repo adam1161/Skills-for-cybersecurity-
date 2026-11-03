@@ -1,0 +1,1260 @@
+[PART 4/14]
+-----
+
+```bash
+# Analyze pcap file for anomalies
+python agent.py --pcap capture.pcap --output report.json
+
+# Custom thresholds
+python agent.py --pcap traffic.pcapng --syn-threshold 50 --dns-length 30
+
+# Port scan detection sensitivity
+python agent.py --pcap scan.pcap --scan-threshold 10
+```
+
+##### END FILE #####
+
+##### FILE: analyzing-network-packets-with-scapy/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Network packet analysis agent using Scapy for pcap parsing and anomaly detection."""
+
+import json
+import math
+import argparse
+from collections import defaultdict, Counter
+from datetime import datetime
+
+from scapy.all import rdpcap, IP, TCP, UDP, DNS, DNSQR, ICMP
+
+
+def load_pcap(filepath):
+    """Load packets from a pcap/pcapng file."""
+    packets = rdpcap(filepath)
+    print(f"[+] Loaded {len(packets)} packets from {filepath}")
+    return packets
+
+
+def extract_packet_info(packets):
+    """Extract structured info from each packet with IP layer."""
+    records = []
+    for pkt in packets:
+        if not pkt.haslayer(IP):
+            continue
+        info = {
+            "src_ip": pkt[IP].src,
+            "dst_ip": pkt[IP].dst,
+            "proto": pkt[IP].proto,
+            "ttl": pkt[IP].ttl,
+            "length": len(pkt),
+            "flags": str(pkt[IP].flags),
+            "timestamp": float(pkt.time),
+        }
+        if pkt.haslayer(TCP):
+            info["src_port"] = pkt[TCP].sport
+            info["dst_port"] = pkt[TCP].dport
+            info["tcp_flags"] = str(pkt[TCP].flags)
+            info["protocol"] = "TCP"
+        elif pkt.haslayer(UDP):
+            info["src_port"] = pkt[UDP].sport
+            info["dst_port"] = pkt[UDP].dport
+            info["protocol"] = "UDP"
+        elif pkt.haslayer(ICMP):
+            info["icmp_type"] = pkt[ICMP].type
+            info["icmp_code"] = pkt[ICMP].code
+            info["protocol"] = "ICMP"
+        else:
+            info["protocol"] = str(pkt[IP].proto)
+        if pkt.haslayer(DNS) and pkt.haslayer(DNSQR):
+            info["dns_query"] = pkt[DNSQR].qname.decode("utf-8", errors="ignore").rstrip(".")
+            info["dns_type"] = pkt[DNSQR].qtype
+        records.append(info)
+    return records
+
+
+def compute_traffic_stats(records):
+    """Compute overall traffic statistics."""
+    src_ips = Counter(r["src_ip"] for r in records)
+    dst_ips = Counter(r["dst_ip"] for r in records)
+    protocols = Counter(r["protocol"] for r in records)
+    dst_ports = Counter(r.get("dst_port", 0) for r in records if r.get("dst_port"))
+    total_bytes = sum(r["length"] for r in records)
+    return {
+        "total_packets": len(records),
+        "total_bytes": total_bytes,
+        "unique_src_ips": len(src_ips),
+        "unique_dst_ips": len(dst_ips),
+        "top_src_ips": src_ips.most_common(10),
+        "top_dst_ips": dst_ips.most_common(10),
+        "protocol_distribution": dict(protocols),
+        "top_dst_ports": dst_ports.most_common(10),
+    }
+
+
+def detect_syn_flood(records, threshold=100):
+    """Detect SYN flood by counting SYN-only packets per destination IP."""
+    syn_counts = defaultdict(int)
+    synack_counts = defaultdict(int)
+    for r in records:
+        if r.get("tcp_flags") == "S":
+            syn_counts[r["dst_ip"]] += 1
+        elif r.get("tcp_flags") == "SA":
+            synack_counts[r["dst_ip"]] += 1
+    alerts = []
+    for ip, count in syn_counts.items():
+        ack_count = synack_counts.get(ip, 0)
+        ratio = ack_count / count if count > 0 else 1.0
+        if count >= threshold and ratio < 0.3:
+            alerts.append({
+                "detection": "SYN Flood",
+                "target_ip": ip,
+                "syn_count": count,
+                "synack_count": ack_count,
+                "synack_ratio": round(ratio, 4),
+                "severity": "critical",
+            })
+    return alerts
+
+
+def calculate_entropy(data):
+    """Calculate Shannon entropy of a string."""
+    if not data:
+        return 0.0
+    freq = Counter(data)
+    length = len(data)
+    return -sum((c / length) * math.log2(c / length) for c in freq.values())
+
+
+def detect_dns_tunneling(records, length_threshold=50, entropy_threshold=3.5):
+    """Detect DNS tunneling via long/high-entropy query names."""
+    alerts = []
+    for r in records:
+        query = r.get("dns_query", "")
+        if not query:
+            continue
+        subdomain = query.split(".")[0] if "." in query else query
+        if len(subdomain) >= length_threshold or calculate_entropy(subdomain) >= entropy_threshold:
+            alerts.append({
+                "detection": "DNS Tunneling Indicator",
+                "query": query,
+                "subdomain_length": len(subdomain),
+                "entropy": round(calculate_entropy(subdomain), 4),
+                "src_ip": r["src_ip"],
+                "severity": "high",
+            })
+    return alerts
+
+
+def detect_port_scan(records, threshold=20):
+    """Detect port scanning by counting unique destination ports per source IP."""
+    src_ports = defaultdict(set)
+    for r in records:
+        if r.get("tcp_flags") == "S" and r.get("dst_port"):
+            src_ports[r["src_ip"]].add(r["dst_port"])
+    alerts = []
+    for ip, ports in src_ports.items():
+        if len(ports) >= threshold:
+            alerts.append({
+                "detection": "Port Scan",
+                "source_ip": ip,
+                "unique_ports_probed": len(ports),
+                "sample_ports": sorted(list(ports))[:20],
+                "severity": "high",
+            })
+    return alerts
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Network Packet Analysis Agent (Scapy)")
+    parser.add_argument("--pcap", required=True, help="Path to pcap/pcapng file")
+    parser.add_argument("--syn-threshold", type=int, default=100, help="SYN flood detection threshold")
+    parser.add_argument("--dns-length", type=int, default=50, help="DNS tunneling subdomain length threshold")
+    parser.add_argument("--scan-threshold", type=int, default=20, help="Port scan unique ports threshold")
+    parser.add_argument("--output", default="packet_analysis_report.json", help="Output report path")
+    args = parser.parse_args()
+
+    packets = load_pcap(args.pcap)
+    records = extract_packet_info(packets)
+    print(f"[+] Extracted {len(records)} IP-layer records")
+
+    stats = compute_traffic_stats(records)
+    syn_alerts = detect_syn_flood(records, args.syn_threshold)
+    dns_alerts = detect_dns_tunneling(records, args.dns_length)
+    scan_alerts = detect_port_scan(records, args.scan_threshold)
+
+    report = {
+        "analysis_time": datetime.utcnow().isoformat() + "Z",
+        "pcap_file": args.pcap,
+        "traffic_stats": stats,
+        "anomalies": {
+            "syn_flood": syn_alerts,
+            "dns_tunneling": dns_alerts,
+            "port_scan": scan_alerts,
+        },
+        "total_anomalies": len(syn_alerts) + len(dns_alerts) + len(scan_alerts),
+    }
+
+    with open(args.output, "w") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"[+] SYN flood alerts: {len(syn_alerts)}")
+    print(f"[+] DNS tunneling indicators: {len(dns_alerts)}")
+    print(f"[+] Port scan detections: {len(scan_alerts)}")
+    print(f"[+] Report saved to {args.output}")
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/SKILL.md #####
+---
+name: performing-web-application-scanning-with-nikto
+description: Runs Nikto, an open-source web server and web application scanner,
+  to test over 7,000 potentially dangerous files/programs, check for outdated versions
+  across 1,250+ servers, and identify XSS, SQL injection, misconfigurations, default
+  credentials, and vulnerable CGI scripts. Use when performing web application vulnerability
+  scanning, security assessments, scheduled security testing, or validating web
+  server security controls.
+domain: cybersecurity
+subdomain: vulnerability-management
+tags:
+- vulnerability-management
+- cve
+- nikto
+- web-scanning
+- owasp
+- risk
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- ID.RA-01
+- ID.RA-02
+- ID.IM-02
+- ID.RA-06
+mitre_attack:
+- T1190
+- T1203
+- T1068
+---
+# Performing Web Application Scanning with Nikto
+
+## Overview
+Nikto is an open-source web server and web application scanner that tests against over 7,000 potentially dangerous files/programs, checks for outdated versions of over 1,250 servers, and identifies version-specific problems on over 270 servers. It performs comprehensive tests including XSS, SQL injection, server misconfigurations, default credentials, and known vulnerable CGI scripts.
+
+
+## When to Use
+
+- When conducting security assessments that involve performing web application scanning with nikto
+- When following incident response procedures for related security events
+- When performing scheduled security testing or auditing activities
+- When validating security controls through hands-on testing
+
+## Prerequisites
+- Nikto installed (Perl-based, included in Kali Linux)
+- Written authorization to scan target web servers
+- Network access to target web applications
+- Understanding of HTTP/HTTPS protocols
+
+## Core Concepts
+
+### What Nikto Detects
+- Server misconfigurations and dangerous default files
+- Outdated server software versions with known CVEs
+- Common CGI vulnerabilities and dangerous scripts
+- Default credentials and admin pages
+- HTTP methods that should be disabled (PUT, DELETE, TRACE)
+- SSL/TLS misconfigurations and weak ciphers
+- Missing security headers (X-Frame-Options, CSP, HSTS)
+- Information disclosure through headers and error pages
+
+### Nikto vs Other Web Scanners
+| Feature | Nikto | OWASP ZAP | Burp Suite | Nuclei |
+|---------|-------|-----------|------------|--------|
+| License | Open Source | Open Source | Commercial | Open Source |
+| Focus | Server/Config | App Logic | Full Pentest | Template-Based |
+| Speed | Fast | Medium | Slow | Very Fast |
+| False Positives | Moderate | Low | Low | Low |
+| Authentication | Basic | Full | Full | Template |
+| Active Community | Yes | Yes | Yes | Yes |
+
+## Workflow
+
+### Step 1: Basic Scanning
+```bash
+# Basic scan against a target
+nikto -h https://target.example.com
+
+# Scan specific port
+nikto -h target.example.com -p 8443
+
+# Scan multiple ports
+nikto -h target.example.com -p 80,443,8080,8443
+
+# Scan with SSL enforcement
+nikto -h target.example.com -ssl
+
+# Scan from a host list file
+nikto -h targets.txt
+```
+
+### Step 2: Advanced Scanning Options
+```bash
+# Comprehensive scan with all tuning options
+nikto -h https://target.example.com \
+  -Tuning 123456789abcde \
+  -timeout 10 \
+  -Pause 2 \
+  -Display V \
+  -output report.html \
+  -Format htm
+
+# Tuning options control test types:
+# 0 - File Upload
+# 1 - Interesting File / Seen in logs
+# 2 - Misconfiguration / Default File
+# 3 - Information Disclosure
+# 4 - Injection (XSS/Script/HTML)
+# 5 - Remote File Retrieval - Inside Web Root
+# 6 - Denial of Service
+# 7 - Remote File Retrieval - Server Wide
+# 8 - Command Execution / Remote Shell
+# 9 - SQL Injection
+# a - Authentication Bypass
+# b - Software Identification
+# c - Remote Source Inclusion
+# d - WebService
+# e - Administrative Console
+
+# Scan with specific tuning (XSS + SQL injection + auth bypass)
+nikto -h https://target.example.com -Tuning 49a
+
+# Scan with authentication
+nikto -h https://target.example.com -id admin:password
+
+# Scan through a proxy
+nikto -h https://target.example.com -useproxy http://proxy:8080
+
+# Scan with custom User-Agent
+nikto -h https://target.example.com -useragent "Mozilla/5.0 (Security Scan)"
+
+# Scan specific CGI directories
+nikto -h https://target.example.com -Cgidirs /cgi-bin/,/scripts/
+
+# Evasion techniques (IDS avoidance for authorized testing)
+# 1-Random URI encoding, 2-Directory self-reference
+# 3-Premature URL ending, 4-Prepend long random string
+nikto -h https://target.example.com -evasion 1234
+```
+
+### Step 3: Output and Reporting
+```bash
+# Generate multiple output formats
+nikto -h https://target.example.com -output scan.csv -Format csv
+nikto -h https://target.example.com -output scan.xml -Format xml
+nikto -h https://target.example.com -output scan.html -Format htm
+nikto -h https://target.example.com -output scan.txt -Format txt
+
+# JSON output (newer versions)
+nikto -h https://target.example.com -output scan.json -Format json
+
+# Save to multiple formats simultaneously
+nikto -h https://target.example.com \
+  -output scan_report \
+  -Format htm
+```
+
+### Step 4: Scan Multiple Targets
+```bash
+# Create targets file (one per line)
+cat > targets.txt << 'EOF'
+https://app1.example.com
+https://app2.example.com:8443
+http://internal-app.corp.local
+192.168.1.100:8080
+EOF
+
+# Scan all targets
+nikto -h targets.txt -output multi_scan.html -Format htm
+
+# Parallel scanning with GNU parallel
+cat targets.txt | parallel -j 5 "nikto -h {} -output {/}_report.html -Format htm"
+```
+
+### Step 5: SSL/TLS Assessment
+```bash
+# Comprehensive SSL scan
+nikto -h https://target.example.com -ssl \
+  -Tuning b \
+  -Display V
+
+# Check for specific SSL vulnerabilities
+# Nikto checks for:
+# - Expired certificates
+# - Self-signed certificates
+# - Weak cipher suites
+# - SSLv2/SSLv3 enabled
+# - BEAST, POODLE, Heartbleed indicators
+# - Missing HSTS header
+```
+
+### Step 6: Integration with Other Tools
+```bash
+# Pipe Nmap results into Nikto
+nmap -p 80,443,8080 --open -oG - 192.168.1.0/24 | \
+  awk '/open/{print $2}' | \
+  while read host; do nikto -h "$host" -output "${host}_nikto.html" -Format htm; done
+
+# Export to Metasploit-compatible format
+nikto -h target.example.com -output msf_import.xml -Format xml
+
+# Parse Nikto XML output with Python for custom reporting
+python3 -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('scan.xml')
+for item in tree.findall('.//item'):
+    print(f\"[{item.get('id')}] {item.findtext('description', '')[:100]}\")
+"
+```
+
+## Interpreting Results
+
+### Severity Classification
+- **OSVDB/CVE References**: Cross-reference with NVD for CVSS scores
+- **Server Information Disclosure**: Version banners, technology stack
+- **Dangerous HTTP Methods**: PUT, DELETE, TRACE enabled
+- **Default/Backup Files**: .bak, .old, .swp, web.config.bak
+- **Admin Interfaces**: /admin, /manager, /console exposed
+- **Missing Security Headers**: CSP, X-Frame-Options, HSTS
+
+### Common False Positives
+- Generic checks triggered by custom 404 pages
+- Anti-CSRF tokens flagged as form vulnerabilities
+- CDN/WAF responses misidentified as vulnerable
+- Load balancer health check pages
+
+## Best Practices
+1. Always obtain written authorization before scanning
+2. Run Nikto in conjunction with application-level scanners (ZAP, Burp)
+3. Use -Pause flag to reduce load on production servers
+4. Validate findings manually before reporting
+5. Combine with SSL testing tools (testssl.sh, sslyze) for comprehensive coverage
+6. Schedule regular scans as part of continuous vulnerability management
+7. Keep Nikto database updated for latest vulnerability checks
+8. Use appropriate evasion settings only for authorized IDS testing
+
+## Common Pitfalls
+- Running Nikto without authorization (legal liability)
+- Treating Nikto as a complete web application scanner (it focuses on server/config issues)
+- Not validating results leading to false positive reports
+- Scanning too aggressively against production systems
+- Ignoring SSL/TLS findings as "informational"
+
+## Related Skills
+- scanning-infrastructure-with-nessus
+- scanning-apis-for-security-vulnerabilities
+- performing-network-vulnerability-assessment
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/assets/template.md #####
+# Nikto Web Scan Report Template
+
+## Scan Configuration
+| Field | Value |
+|-------|-------|
+| Target | [URL] |
+| Port(s) | [80, 443, 8080] |
+| Tuning | [Options Used] |
+| SSL | [Yes/No] |
+| Authentication | [None/Basic/Cookie] |
+| Date | [YYYY-MM-DD] |
+
+## Server Information
+| Field | Value |
+|-------|-------|
+| Server Banner | [Apache/2.4.52 (Ubuntu)] |
+| Technologies | [PHP/8.1, OpenSSL/3.0.2] |
+| HTTP Methods | [GET, POST, OPTIONS, HEAD] |
+| Interesting Headers | [X-Powered-By, Server, etc.] |
+
+## Findings Summary
+| Severity | Count | Action Required |
+|----------|-------|-----------------|
+| Critical | [N] | Immediate remediation |
+| High | [N] | Remediate within 7 days |
+| Medium | [N] | Remediate within 30 days |
+| Low | [N] | Plan remediation |
+| Info | [N] | Review and document |
+
+## Detailed Findings
+### [SEVERITY] - [Finding Title]
+- **Nikto ID**: [ID]
+- **OSVDB**: [OSVDB-ID]
+- **URI**: [/path/found]
+- **Method**: [GET/POST]
+- **Description**: [Detailed finding description]
+- **Remediation**: [Steps to fix]
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/references/api-reference.md #####
+# API Reference: Web Application Scanning with Nikto
+
+## Nikto CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `-h <host>` | Target hostname or IP |
+| `-port <ports>` | Target ports (comma-separated) |
+| `-ssl` | Force SSL/TLS connection |
+| `-Format xml\|json\|csv\|htm` | Output format |
+| `-output <file>` | Save results to file |
+| `-Tuning <options>` | Scan tuning categories |
+| `-Plugins <list>` | Specific plugins to run |
+| `-maxtime <seconds>s` | Maximum scan duration |
+| `-nointeractive` | Disable interactive prompts |
+| `-useproxy <url>` | Use HTTP proxy |
+| `-id <user:pass>` | HTTP Basic auth credentials |
+
+## Tuning Categories
+
+| Code | Category |
+|------|----------|
+| 1 | Interesting File / Seen in logs |
+| 2 | Misconfiguration / Default File |
+| 3 | Information Disclosure |
+| 4 | Injection (XSS/Script/HTML) |
+| 5 | Remote File Retrieval - Inside Web Root |
+| 6 | Denial of Service |
+| 7 | Remote File Retrieval - Server Wide |
+| 8 | Command Execution / Remote Shell |
+| 9 | SQL Injection |
+| 0 | File Upload |
+
+## XML Output Structure
+
+| Element | Description |
+|---------|-------------|
+| `<niktoscan>` | Root element |
+| `<scandetails>` | Scan metadata |
+| `<item>` | Individual finding |
+| `<item id="..." osvdbid="...">` | Finding with OSVDB reference |
+| `<uri>` | Affected URI path |
+| `<description>` | Finding description |
+
+## Python Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `subprocess` | stdlib | Execute Nikto CLI |
+| `xml.etree.ElementTree` | stdlib | Parse Nikto XML output |
+| `json` | stdlib | Report generation |
+
+## References
+
+- Nikto GitHub: https://github.com/sullo/nikto
+- Nikto Documentation: https://cirt.net/Nikto2
+- OSVDB (archived): https://vulndb.cyberriskanalytics.com/
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/references/standards.md #####
+# Standards and References - Web Application Scanning with Nikto
+
+## Industry Standards
+- **OWASP Testing Guide v4.2**: Web application security testing methodology
+- **NIST SP 800-115**: Technical Guide to Information Security Testing and Assessment
+- **PCI DSS v4.0 Req 6.4**: Address common coding vulnerabilities in development
+- **PCI DSS v4.0 Req 11.3.3**: Perform external vulnerability scans via ASV
+
+## Nikto Resources
+- Nikto GitHub Repository: https://github.com/sullo/nikto
+- Nikto Documentation: https://cirt.net/Nikto2
+- Nikto Plugin Database: https://github.com/sullo/nikto/tree/master/plugins
+- Nikto Cheat Sheet: https://highon.coffee/blog/nikto-cheat-sheet/
+
+## Complementary Web Scanning Tools
+| Tool | Purpose | URL |
+|------|---------|-----|
+| OWASP ZAP | Application-level scanning | https://www.zaproxy.org/ |
+| Nuclei | Template-based scanning | https://github.com/projectdiscovery/nuclei |
+| testssl.sh | SSL/TLS assessment | https://testssl.sh/ |
+| Wapiti | Web application fuzzer | https://wapiti-scanner.github.io/ |
+| WhatWeb | Web technology fingerprinting | https://github.com/urbanadventurer/WhatWeb |
+
+## Nikto Tuning Reference
+| Code | Category | Description |
+|------|----------|-------------|
+| 0 | File Upload | Checks for file upload vulnerabilities |
+| 1 | Interesting File | Files commonly seen in server logs |
+| 2 | Misconfiguration | Default files and misconfigurations |
+| 3 | Information Disclosure | Information leakage through headers/pages |
+| 4 | Injection (XSS) | Cross-site scripting and HTML injection |
+| 5 | Remote File Retrieval | Inside web root file access |
+| 6 | Denial of Service | DoS vulnerability checks |
+| 7 | Remote File Retrieval | Server-wide file access |
+| 8 | Command Execution | RCE and remote shell vulnerabilities |
+| 9 | SQL Injection | SQL injection vulnerability checks |
+| a | Authentication Bypass | Authentication bypass techniques |
+| b | Software Identification | Server and software version detection |
+| c | Remote Source Inclusion | RFI/LFI vulnerability checks |
+| d | WebService | Web service specific vulnerabilities |
+| e | Administrative Console | Admin interface discovery |
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/references/workflows.md #####
+# Workflows - Web Application Scanning with Nikto
+
+## Workflow 1: Standard Web Server Assessment
+
+```
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│ Enumerate    │──>│ Run Nikto    │──>│ Parse XML    │
+│ Web Servers  │   │ Scan         │   │ Results      │
+│ (Nmap/DNS)   │   │ (-Format xml)│   │              │
+└──────────────┘   └──────────────┘   └──────────────┘
+                                            │
+       ┌───────────────────────────────────┘
+       v
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│ Validate     │──>│ Cross-ref    │──>│ Generate     │
+│ Findings     │   │ with NVD     │   │ Report       │
+│ (Manual)     │   │ (CVE/CVSS)   │   │              │
+└──────────────┘   └──────────────┘   └──────────────┘
+```
+
+## Workflow 2: CI/CD Integration
+
+```
+Code Push → Build → Deploy to Staging
+                         │
+                    Run Nikto Scan
+                         │
+                 ┌───────┴───────┐
+                 │               │
+            No Findings    Findings Found
+                 │               │
+            Deploy to       Block Deploy
+            Production      Notify Team
+```
+
+## Workflow 3: Multi-Tool Web Assessment
+
+1. **Nikto**: Server configuration and known vulnerability checks
+2. **OWASP ZAP**: Application logic and dynamic analysis
+3. **testssl.sh**: Comprehensive SSL/TLS assessment
+4. **Nuclei**: Template-based CVE validation
+5. **Manual Testing**: Validate and verify all findings
+6. **Consolidated Report**: Merge results from all tools
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for web application scanning with Nikto.
+
+Runs Nikto via subprocess for web server vulnerability scanning,
+parses XML/JSON output, classifies findings by OSVDB/CVE, and
+generates a structured security assessment report.
+"""
+
+import subprocess
+import json
+import sys
+import xml.etree.ElementTree as ET
+from datetime import datetime
+from pathlib import Path
+
+
+class NiktoScanAgent:
+    """Automates Nikto web vulnerability scanning and reporting."""
+
+    def __init__(self, target, output_dir="./nikto_scans"):
+        self.target = target
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.findings = []
+
+    def run_scan(self, ports="80,443", tuning=None, plugins=None,
+                 ssl_mode=False, timeout=600):
+        """Execute Nikto scan against the target."""
+        xml_output = self.output_dir / f"nikto_{self.target.replace('/', '_')}.xml"
+        cmd = ["nikto", "-h", self.target, "-port", ports,
+               "-Format", "xml", "-output", str(xml_output), "-nointeractive"]
+        if ssl_mode:
+            cmd.extend(["-ssl"])
+        if tuning:
+            cmd.extend(["-Tuning", tuning])
+        if plugins:
+            cmd.extend(["-Plugins", plugins])
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    timeout=timeout)
+            return {"return_code": result.returncode,
+                    "xml_output": str(xml_output),
+                    "stderr": result.stderr[:500] if result.stderr else ""}
+        except FileNotFoundError:
+            return {"error": "nikto not installed. Install: apt install nikto"}
+        except subprocess.TimeoutExpired:
+            return {"error": f"Scan timed out after {timeout}s"}
+
+    def parse_xml_results(self, xml_path=None):
+        """Parse Nikto XML output into structured findings."""
+        if xml_path is None:
+            xml_path = self.output_dir / f"nikto_{self.target.replace('/', '_')}.xml"
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+        except (ET.ParseError, FileNotFoundError) as exc:
+            return {"error": str(exc)}
+
+        for item in root.iter("item"):
+            finding = {
+                "id": item.get("id", ""),
+                "osvdb": item.get("osvdbid", ""),
+                "method": item.get("method", "GET"),
+                "uri": "",
+                "description": "",
+                "references": [],
+            }
+            uri_elem = item.find("uri")
+            if uri_elem is not None:
+                finding["uri"] = uri_elem.text or ""
+            desc_elem = item.find("description")
+            if desc_elem is not None:
+                finding["description"] = desc_elem.text or ""
+
+            desc_lower = finding["description"].lower()
+            if any(kw in desc_lower for kw in ["remote code", "rce", "command injection"]):
+                finding["severity"] = "Critical"
+            elif any(kw in desc_lower for kw in ["sql injection", "xss", "file inclusion"]):
+                finding["severity"] = "High"
+            elif any(kw in desc_lower for kw in ["directory listing", "information disclosure"]):
+                finding["severity"] = "Medium"
+            else:
+                finding["severity"] = "Low"
+
+            self.findings.append(finding)
+        return self.findings
+
+    def run_quick_scan(self, timeout=300):
+        """Run a fast Nikto scan with essential checks only."""
+        cmd = ["nikto", "-h", self.target, "-Tuning", "123", "-maxtime",
+               str(timeout) + "s", "-nointeractive"]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    timeout=timeout + 30)
+            lines = result.stdout.splitlines()
+            for line in lines:
+                if "+ " in line and "OSVDB" in line:
+                    self.findings.append({
+                        "description": line.strip().lstrip("+ "),
+                        "severity": "Medium", "source": "stdout",
+                    })
+            return {"lines": len(lines), "findings": len(self.findings)}
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            return {"error": str(exc)}
+
+    def generate_report(self):
+        """Generate scan report with severity distribution."""
+        severity_counts = {}
+        for f in self.findings:
+            sev = f.get("severity", "Info")
+            severity_counts[sev] = severity_counts.get(sev, 0) + 1
+
+        report = {
+            "target": self.target,
+            "scan_date": datetime.utcnow().isoformat(),
+            "total_findings": len(self.findings),
+            "severity_distribution": severity_counts,
+            "findings": self.findings[:100],
+        }
+        report_path = self.output_dir / "nikto_report.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2)
+        print(json.dumps(report, indent=2))
+        return report
+
+
+def main():
+    target = sys.argv[1] if len(sys.argv) > 1 else "http://localhost"
+    agent = NiktoScanAgent(target)
+    result = agent.run_scan()
+    if "error" not in result:
+        agent.parse_xml_results()
+    else:
+        agent.run_quick_scan()
+    agent.generate_report()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-web-application-scanning-with-nikto/scripts/process.py #####
+#!/usr/bin/env python3
+"""
+Nikto Web Application Scanning Automation
+
+Automates Nikto scanning across multiple targets, parses results,
+and generates consolidated vulnerability reports.
+
+Requirements:
+    pip install pandas defusedxml jinja2
+    System: nikto installed and in PATH
+
+Usage:
+    python process.py scan --targets targets.txt --output-dir ./results
+    python process.py parse --xml-dir ./results --report report.html
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
+
+import defusedxml.ElementTree as ET
+import pandas as pd
+
+
+class NiktoScanner:
+    """Automated Nikto web scanning manager."""
+
+    def __init__(self, output_dir: str = "./nikto_results", timeout: int = 600):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.timeout = timeout
+        self.results = []
+
+    def scan_target(self, target: str, tuning: str = "123456789abc",
+                    pause: int = 1, ssl: bool = False) -> dict:
+        """Run Nikto scan against a single target."""
+        parsed = urlparse(target if "://" in target else f"http://{target}")
+        safe_name = parsed.netloc.replace(":", "_").replace("/", "_")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        xml_output = self.output_dir / f"{safe_name}_{timestamp}.xml"
+
+        cmd = [
+            "nikto",
+            "-h", target,
+            "-Tuning", tuning,
+            "-Pause", str(pause),
+            "-timeout", "10",
+            "-nointeractive",
+            "-output", str(xml_output),
+            "-Format", "xml",
+        ]
+
+        if ssl or parsed.scheme == "https":
+            cmd.append("-ssl")
+
+        result = {
+            "target": target,
+            "status": "unknown",
+            "output_file": str(xml_output),
+            "findings": [],
+            "start_time": datetime.now().isoformat(),
+        }
+
+        print(f"[*] Scanning {target}...")
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=self.timeout
+            )
+            result["status"] = "completed"
+            result["end_time"] = datetime.now().isoformat()
+            result["stdout"] = proc.stdout[-2000:] if proc.stdout else ""
+            result["stderr"] = proc.stderr[-500:] if proc.stderr else ""
+
+            if xml_output.exists():
+                result["findings"] = self.parse_xml(str(xml_output))
+                finding_count = len(result["findings"])
+                print(f"[+] {target}: {finding_count} findings")
+            else:
+                print(f"[!] {target}: No XML output generated")
+                result["status"] = "no_output"
+
+        except subprocess.TimeoutExpired:
+            result["status"] = "timeout"
+            print(f"[-] {target}: Scan timed out after {self.timeout}s")
+        except FileNotFoundError:
+            result["status"] = "error"
+            result["error"] = "nikto not found in PATH"
+            print("[-] Error: nikto not found. Install with: apt install nikto")
+        except Exception as e:
+            result["status"] = "error"
+            result["error"] = str(e)
+            print(f"[-] {target}: Error - {e}")
+
+        self.results.append(result)
+        return result
+
+    def scan_targets(self, targets: list, max_parallel: int = 3, **kwargs) -> list:
+        """Scan multiple targets with optional parallelism."""
+        self.results = []
+
+        with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            futures = {
+                executor.submit(self.scan_target, target, **kwargs): target
+                for target in targets
+            }
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    target = futures[future]
+                    print(f"[-] {target}: Scan failed - {e}")
+
+        return self.results
+
+    @staticmethod
+    def parse_xml(xml_path: str) -> list:
+        """Parse Nikto XML output into structured findings."""
+        findings = []
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+
+            for scan_details in root.findall(".//scandetails"):
+                target_ip = scan_details.get("targetip", "")
+                target_host = scan_details.get("targethostname", "")
+                target_port = scan_details.get("targetport", "")
+                target_banner = scan_details.get("targetbanner", "")
+
+                for item in scan_details.findall("item"):
+                    finding = {
+                        "target_ip": target_ip,
+                        "target_host": target_host,
+                        "target_port": target_port,
+                        "server_banner": target_banner,
+                        "nikto_id": item.get("id", ""),
+                        "osvdb_id": item.get("osvdbid", ""),
+                        "osvdb_link": item.get("osvdblink", ""),
+                        "method": item.get("method", "GET"),
+                        "uri": item.findtext("uri", ""),
+                        "description": item.findtext("description", ""),
+                        "name_link": item.findtext("namelink", ""),
+                        "ip_link": item.findtext("iplink", ""),
+                    }
+
+                    # Classify severity based on description keywords
+                    desc_lower = finding["description"].lower()
+                    if any(w in desc_lower for w in ["remote code", "command execution", "backdoor", "rce"]):
+                        finding["severity"] = "Critical"
+                    elif any(w in desc_lower for w in ["sql injection", "xss", "cross-site", "file inclusion"]):
+                        finding["severity"] = "High"
+                    elif any(w in desc_lower for w in ["directory listing", "information disclosure", "version"]):
+                        finding["severity"] = "Medium"
+                    elif any(w in desc_lower for w in ["header", "cookie", "x-frame"]):
+                        finding["severity"] = "Low"
+                    else:
+                        finding["severity"] = "Info"
+
+                    findings.append(finding)
+
+        except Exception as e:
+            print(f"[!] XML parse error for {xml_path}: {e}")
+
+        return findings
+
+    def generate_report(self, output_path: str):
+        """Generate consolidated HTML report from all scan results."""
+        all_findings = []
+        for result in self.results:
+            for finding in result.get("findings", []):
+                finding["scan_target"] = result["target"]
+                finding["scan_status"] = result["status"]
+                all_findings.append(finding)
+
+        if not all_findings:
+            print("[-] No findings to report")
+            return
+
+        df = pd.DataFrame(all_findings)
+
+        # Severity counts
+        sev_counts = df["severity"].value_counts().to_dict()
+
+        # Target summary
+        target_summary = (df.groupby(["scan_target", "target_port"])
+                          .agg(findings=("nikto_id", "count"),
+                               critical=("severity", lambda x: (x == "Critical").sum()),
+                               high=("severity", lambda x: (x == "High").sum()))
+                          .reset_index())
+
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Nikto Scan Report - {datetime.now().strftime('%Y-%m-%d')}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+        .header {{ background: #16213e; color: white; padding: 20px; border-radius: 8px; }}
+        .cards {{ display: flex; gap: 15px; margin: 20px 0; }}
+        .card {{ background: white; padding: 20px; border-radius: 8px; flex: 1; text-align: center;
+                 box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .card h3 {{ margin: 0; font-size: 2em; }}
+        table {{ width: 100%; border-collapse: collapse; background: white; margin: 15px 0;
+                 border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        th {{ background: #2c3e50; color: white; padding: 10px; text-align: left; }}
+        td {{ padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }}
+        .sev-critical {{ color: #e74c3c; font-weight: bold; }}
+        .sev-high {{ color: #e67e22; font-weight: bold; }}
+        .sev-medium {{ color: #f39c12; }}
+        .sev-low {{ color: #3498db; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Nikto Web Scan Report</h1>
+        <p>Targets: {len(self.results)} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+    </div>
+
+    <div class="cards">
+        <div class="card" style="border-top:4px solid #e74c3c"><h3>{sev_counts.get('Critical', 0)}</h3><p>Critical</p></div>
+        <div class="card" style="border-top:4px solid #e67e22"><h3>{sev_counts.get('High', 0)}</h3><p>High</p></div>
+        <div class="card" style="border-top:4px solid #f39c12"><h3>{sev_counts.get('Medium', 0)}</h3><p>Medium</p></div>
+        <div class="card" style="border-top:4px solid #3498db"><h3>{sev_counts.get('Low', 0)}</h3><p>Low</p></div>
+    </div>
+
+    <h2>Target Summary</h2>
+    <table>
+        <tr><th>Target</th><th>Port</th><th>Total</th><th>Critical</th><th>High</th></tr>
+        {''.join(f"<tr><td>{r.scan_target}</td><td>{r.target_port}</td><td>{r.findings}</td><td>{r.critical}</td><td>{r.high}</td></tr>" for r in target_summary.itertuples())}
+    </table>
+
+    <h2>All Findings</h2>
+    <table>
+        <tr><th>Target</th><th>Severity</th><th>URI</th><th>Description</th><th>OSVDB</th></tr>
+        {''.join(f'<tr><td>{r.scan_target}</td><td class="sev-{r.severity.lower()}">{r.severity}</td><td>{r.uri}</td><td>{r.description[:150]}</td><td>{r.osvdb_id}</td></tr>' for r in df.sort_values("severity").itertuples())}
+    </table>
+</body>
+</html>"""
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"[+] Report saved to: {output_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Nikto Web Scanning Automation")
+    subparsers = parser.add_subparsers(dest="command")
+
+    scan_p = subparsers.add_parser("scan", help="Scan web targets with Nikto")
+    scan_p.add_argument("--targets", required=True, help="File with target URLs")
+    scan_p.add_argument("--output-dir", default="./nikto_results")
+
+-----
+[END PART 4/14] — رد غير "Received part 4/14"

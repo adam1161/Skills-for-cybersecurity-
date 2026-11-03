@@ -1,0 +1,1096 @@
+[PART 1/14] — تعليمات مهمة
+
+غادي نصيفط ليك 20 skill ديال cybersecurity (الهجوم والفحص: recon، nmap، web pentest، SQLi/XSS، Metasploit، privilege escalation، hash cracking، wifi pentest)، مقسمة فـ 14 جزء.
+القواعد:
+1. بعد كل جزء، جاوب غير بـ "Received part X/14" بلا تلخيص ولا تعليق.
+2. احتفظ بكلشي كقاعدة معرفة. كل ملف يبدا بـ "##### FILE: path #####" ويسالي بـ "##### END FILE #####". ملف يمكن يكمل فالجزء الموالي.
+3. بعد "ALL PARTS SENT"، جاوبني من هاد المحتوى، بلغتي، وبلا ما تختلق أوامر أو معلومات ماشي موجودة.
+4. كلشي للاستعمال القانوني فقط (تعلم، CTF، pentest بإذن).
+هاذي جزء 1:
+-----
+
+##### FILE: scanning-network-with-nmap-advanced/SKILL.md #####
+---
+name: scanning-network-with-nmap-advanced
+description: 'Performs advanced network recon using Nmap''s Scripting Engine (NSE),
+  timing controls, firewall/IDS evasion, and structured output parsing to discover
+  hosts, enumerate service versions, detect vulnerabilities, and fingerprint OSes.
+  Use during authorized penetration tests or enterprise asset-discovery assessments
+  needing scan evasion, NSE vulnerability checks, or output fed into a vulnerability
+  management pipeline.
+
+  '
+domain: cybersecurity
+subdomain: network-security
+tags:
+- network-security
+- nmap
+- port-scanning
+- service-enumeration
+- reconnaissance
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1046
+- T1040
+- T1557
+- T1071
+- T1595
+---
+# Scanning Network with Nmap Advanced Techniques
+
+## When to Use
+
+- Performing comprehensive asset discovery across large enterprise networks during authorized assessments
+- Enumerating service versions and configurations to identify outdated or vulnerable software
+- Bypassing firewall rules and IDS during authorized penetration tests using scan evasion techniques
+- Scripting automated vulnerability checks using the Nmap Scripting Engine (NSE)
+- Generating structured scan output for integration into vulnerability management pipelines
+
+**Do not use** against networks without explicit written authorization, on production systems during peak hours without approval, or to perform denial-of-service through aggressive scan timing.
+
+## Prerequisites
+
+- Nmap 7.90+ installed (`nmap --version` to verify)
+- Root/sudo privileges for SYN scans, OS detection, and raw packet techniques
+- Written authorization specifying in-scope IP ranges and any excluded hosts
+- Network access to target ranges (VPN, direct connection, or jump host)
+- Familiarity with TCP/IP protocols and common port assignments
+
+## Workflow
+
+### Step 1: Host Discovery with Multiple Probes
+
+Use layered discovery to find live hosts even when ICMP is blocked:
+
+```bash
+# ARP discovery for local subnet (most reliable on LAN)
+nmap -sn -PR 192.168.1.0/24 -oA discovery_arp
+
+# Combined ICMP + TCP + UDP probes for remote networks
+nmap -sn -PE -PP -PS21,22,25,80,443,445,3389,8080 -PU53,161,500 10.0.0.0/16 -oA discovery_combined
+
+# List scan to resolve DNS names without sending packets to targets
+nmap -sL 10.0.0.0/24 -oN dns_resolution.txt
+```
+
+Consolidate results into a live hosts file:
+
+```bash
+grep "Host:" discovery_combined.gnmap | awk '{print $2}' | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n > live_hosts.txt
+```
+
+### Step 2: Port Scanning with Timing and Performance Tuning
+
+```bash
+# Full TCP SYN scan with optimized timing
+nmap -sS -p- --min-rate 5000 --max-retries 2 -T4 -iL live_hosts.txt -oA full_tcp_scan
+
+# Top 1000 UDP ports with version detection
+nmap -sU --top-ports 1000 --version-intensity 0 -T4 -iL live_hosts.txt -oA udp_scan
+
+# Specific port ranges for targeted assessment
+nmap -sS -p 1-1024,3306,5432,6379,8080-8090,9200,27017 -iL live_hosts.txt -oA targeted_ports
+```
+
+### Step 3: Service Version Detection and OS Fingerprinting
+
+```bash
+# Aggressive service detection with version intensity
+nmap -sV --version-intensity 5 -sC -O --osscan-guess -p <open_ports> -iL live_hosts.txt -oA service_enum
+
+# Specific service probing for ambiguous ports
+nmap -sV --version-all -p 8443 --script ssl-cert,http-title,http-server-header <target> -oN service_detail.txt
+```
+
+### Step 4: NSE Vulnerability Scanning
+
+```bash
+# Run vulnerability detection scripts
+nmap --script vuln -p <open_ports> -iL live_hosts.txt -oA vuln_scan
+
+# Target specific vulnerabilities
+nmap --script smb-vuln-ms17-010,smb-vuln-ms08-067 -p 445 -iL live_hosts.txt -oA smb_vulns
+nmap --script ssl-heartbleed,ssl-poodle,ssl-ccs-injection -p 443,8443 -iL live_hosts.txt -oA ssl_vulns
+
+# Brute force default credentials on discovered services
+nmap --script http-default-accounts,ftp-anon,ssh-auth-methods -p 21,22,80,8080 -iL live_hosts.txt -oA default_creds
+```
+
+### Step 5: Firewall Evasion Techniques
+
+```bash
+# Fragment packets to evade simple packet inspection
+nmap -sS -f --mtu 24 -p 80,443 <target> -oN fragmented_scan.txt
+
+# Use decoy addresses to obscure scan origin
+nmap -sS -D RND:10 -p 80,443 <target> -oN decoy_scan.txt
+
+# Spoof source port as DNS (53) to bypass poorly configured firewalls
+nmap -sS --source-port 53 -p 1-1024 <target> -oN spoofed_port_scan.txt
+
+# Idle scan using a zombie host (completely stealthy)
+nmap -sI <zombie_host> -p 80,443,445 <target> -oN idle_scan.txt
+
+# Slow scan to evade IDS rate-based detection
+nmap -sS -T1 --max-rate 10 -p 1-1024 <target> -oA stealth_scan
+```
+
+### Step 6: Output Parsing and Reporting
+
+```bash
+# Convert XML output to HTML report
+xsltproc full_tcp_scan.xml -o scan_report.html
+
+# Extract open ports per host from grepable output
+grep "Ports:" full_tcp_scan.gnmap | awk -F'Ports: ' '{print $1 $2}' > open_ports_summary.txt
+
+# Parse XML with nmap-parse-output for structured data
+nmap-parse-output full_tcp_scan.xml hosts-to-port 445
+
+# Import into Metasploit database
+msfconsole -q -x "db_import full_tcp_scan.xml; hosts; services; exit"
+
+# Generate CSV for vulnerability management tools
+nmap-parse-output full_tcp_scan.xml csv > scan_results.csv
+```
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **SYN Scan (-sS)** | Half-open TCP scan that sends SYN packets and analyzes responses without completing the three-way handshake, making it faster and stealthier than connect scans |
+| **NSE (Nmap Scripting Engine)** | Lua-based scripting framework built into Nmap that enables vulnerability detection, brute forcing, service discovery, and custom automation |
+| **Timing Templates (-T0 to -T5)** | Predefined scan speed profiles ranging from Paranoid (T0) to Insane (T5), controlling probe parallelism, timeout values, and inter-probe delays |
+| **Idle Scan (-sI)** | Advanced scan technique that uses a zombie host's IP ID sequence to port scan a target without sending packets from the scanner's own IP address |
+| **Version Intensity** | Controls how many probes Nmap sends to determine service versions, ranging from 0 (light) to 9 (all probes), trading speed for accuracy |
+| **Grepable Output (-oG)** | Legacy Nmap output format designed for easy parsing with grep, awk, and sed for scripted analysis of scan results |
+
+## Tools & Systems
+
+- **Nmap 7.90+**: Core scanning engine with NSE scripting, OS detection, version probing, and multiple output formats
+- **nmap-parse-output**: Community tool for parsing Nmap XML output into structured formats (CSV, JSON, host lists)
+- **Ndiff**: Nmap utility for comparing two scan results to identify changes in network state over time
+- **Zenmap**: Official Nmap GUI providing visual network topology mapping and scan profile management
+- **Metasploit Framework**: Imports Nmap XML output for direct correlation of scan results with exploit modules
+
+## Common Scenarios
+
+### Scenario: Enterprise Network Asset Discovery and Vulnerability Baseline
+
+**Context**: A security team needs to establish a vulnerability baseline for a corporate network spanning 10.0.0.0/8 with approximately 5,000 active hosts. Scanning must complete within a weekend maintenance window with minimal network disruption.
+
+**Approach**:
+1. Run layered host discovery using ARP (local subnets), TCP SYN (ports 22,80,443,445,3389), and ICMP echo probes across all /24 subnets
+2. Perform a full TCP SYN scan on discovered hosts using `--min-rate 5000` and `-T4` to complete within the window
+3. Run service version detection and default NSE scripts on all open ports
+4. Execute targeted NSE vulnerability scripts for critical services (SMB, SSL/TLS, HTTP)
+5. Parse XML output to generate per-subnet CSV reports and import into the vulnerability management platform
+6. Schedule Ndiff comparisons against future scans to track remediation progress
+
+**Pitfalls**:
+- Setting `--min-rate` too high on congested network segments causing packet loss and false negatives
+- Running `-T5` (Insane) timing on production networks, potentially overwhelming older network devices
+- Forgetting to scan UDP ports, missing critical services like SNMP (161), DNS (53), and TFTP (69)
+- Not saving output in XML format (`-oX` or `-oA`), losing structured data for downstream tool integration
+
+## Output Format
+
+```
+## Nmap Scan Summary
+
+**Scan Profile**: Full TCP + Top 200 UDP + Service Enumeration
+**Target Range**: 10.10.0.0/16
+**Hosts Discovered**: 347 live hosts
+**Scan Duration**: 2h 14m
+
+### Critical Findings
+
+| Host | Port | Service | Version | Vulnerability |
+|------|------|---------|---------|---------------|
+| 10.10.5.23 | 445/tcp | SMB | Windows Server 2012 R2 | MS17-010 (EternalBlue) |
+| 10.10.8.100 | 443/tcp | Apache httpd | 2.4.29 | CVE-2021-41773 (Path Traversal) |
+| 10.10.12.5 | 3306/tcp | MySQL | 5.6.24 | CVE-2016-6662 (RCE) |
+| 10.10.3.77 | 161/udp | SNMP | v2c | Public community string |
+
+### Recommendations
+1. Patch MS17-010 on 10.10.5.23 immediately -- Critical RCE vulnerability
+2. Upgrade Apache httpd to 2.4.58+ on 10.10.8.100
+3. Upgrade MySQL to 8.0.x on 10.10.12.5 and restrict bind address
+4. Change SNMP community strings from "public" on 10.10.3.77
+```
+
+##### END FILE #####
+
+##### FILE: scanning-network-with-nmap-advanced/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: scanning-network-with-nmap-advanced/references/api-reference.md #####
+# API Reference: Scanning Network with Nmap Advanced
+
+## python-nmap Library
+
+### Installation
+```bash
+pip install python-nmap
+```
+Requires Nmap binary installed on the system (`nmap` must be in PATH).
+
+### Core Classes
+
+#### `nmap.PortScanner()`
+Main scanner class wrapping the Nmap command-line tool.
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `scan()` | `hosts`, `ports`, `arguments` | `dict` | Execute Nmap scan with given arguments |
+| `all_hosts()` | - | `list[str]` | List of all scanned host IPs |
+| `nmap_version()` | - | `tuple` | Installed Nmap version |
+| `command_line()` | - | `str` | Nmap command that was executed |
+
+#### Scanner Result Access
+```python
+scanner[host].state()              # Host state: 'up' or 'down'
+scanner[host].all_protocols()      # ['tcp', 'udp']
+scanner[host][proto].keys()        # List of port numbers
+scanner[host][proto][port]         # Port info dict with keys: state, name, product, version
+scanner[host].hostnames()          # [{'name': 'hostname', 'type': 'PTR'}]
+scanner[host]['osmatch']           # OS detection results
+```
+
+### Common Nmap Arguments
+| Argument | Purpose |
+|----------|---------|
+| `-sS` | TCP SYN scan (half-open, requires root) |
+| `-sV` | Service version detection |
+| `-sC` | Run default NSE scripts |
+| `-O` | OS fingerprinting |
+| `-sn` | Host discovery only (no port scan) |
+| `--script vuln` | Run vulnerability detection scripts |
+| `-T0` to `-T5` | Timing templates (paranoid to insane) |
+| `--min-rate N` | Minimum packets per second |
+| `-PE -PP -PS` | ICMP echo, timestamp, TCP SYN discovery probes |
+| `-oX file` | Output results in XML format |
+
+### Output Parsing
+```python
+scanner.csv()           # CSV-formatted scan results
+scanner.scaninfo()      # Scan metadata (type, services scanned)
+scanner.scanstats()     # Timing and host statistics
+```
+
+## References
+- python-nmap docs: https://pypi.org/project/python-nmap/
+- Nmap Reference Guide: https://nmap.org/book/man.html
+- NSE Script Categories: https://nmap.org/nsedoc/categories/
+
+##### END FILE #####
+
+##### FILE: scanning-network-with-nmap-advanced/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Automated network scanning agent using python-nmap for authorized assessments."""
+
+import nmap
+import json
+import csv
+import sys
+import os
+import argparse
+from datetime import datetime
+
+
+def discover_hosts(scanner, target, timing="T4"):
+    """Run host discovery using multiple probe techniques."""
+    print(f"[*] Discovering live hosts on {target}...")
+    scanner.scan(hosts=target, arguments=f"-sn -PE -PP -PS22,80,443,445,3389 -{timing}")
+    hosts = []
+    for host in scanner.all_hosts():
+        state = scanner[host].state()
+        if state == "up":
+            hosts.append(host)
+            hostnames = [h["name"] for h in scanner[host].hostnames() if h["name"]]
+            hostname_str = ", ".join(hostnames) if hostnames else "N/A"
+            print(f"  [+] {host} ({hostname_str}) - {state}")
+    print(f"[*] Discovered {len(hosts)} live hosts")
+    return hosts
+
+
+def scan_ports(scanner, hosts, ports="1-1024", timing="T4"):
+    """Run SYN scan on discovered hosts for specified ports."""
+    results = {}
+    target_str = " ".join(hosts) if isinstance(hosts, list) else hosts
+    print(f"\n[*] Scanning ports {ports} on {len(hosts) if isinstance(hosts, list) else 1} host(s)...")
+    scanner.scan(hosts=target_str, ports=ports, arguments=f"-sS -{timing} --min-rate 3000 --max-retries 2")
+    for host in scanner.all_hosts():
+        results[host] = []
+        for proto in scanner[host].all_protocols():
+            ports_list = sorted(scanner[host][proto].keys())
+            for port in ports_list:
+                port_info = scanner[host][proto][port]
+                if port_info["state"] == "open":
+                    results[host].append({
+                        "port": port,
+                        "protocol": proto,
+                        "state": port_info["state"],
+                        "service": port_info.get("name", "unknown"),
+                        "version": port_info.get("version", ""),
+                        "product": port_info.get("product", ""),
+                    })
+                    print(f"  [+] {host}:{port}/{proto} - {port_info.get('name', '?')} "
+                          f"{port_info.get('product', '')} {port_info.get('version', '')}")
+    return results
+
+
+def service_version_scan(scanner, host, open_ports):
+    """Run aggressive service version detection on open ports."""
+    port_str = ",".join(str(p["port"]) for p in open_ports)
+    print(f"\n[*] Running service version detection on {host} ports {port_str}...")
+    scanner.scan(hosts=host, ports=port_str, arguments="-sV --version-intensity 5 -sC -O --osscan-guess")
+    info = {"os_matches": [], "services": []}
+    if host in scanner.all_hosts():
+        if "osmatch" in scanner[host]:
+            for os_match in scanner[host]["osmatch"][:3]:
+                info["os_matches"].append({"name": os_match["name"], "accuracy": os_match["accuracy"]})
+        for proto in scanner[host].all_protocols():
+            for port in sorted(scanner[host][proto].keys()):
+                svc = scanner[host][proto][port]
+                info["services"].append({
+                    "port": port, "protocol": proto, "service": svc.get("name", ""),
+                    "product": svc.get("product", ""), "version": svc.get("version", ""),
+                    "extrainfo": svc.get("extrainfo", ""),
+                })
+    return info
+
+
+def vuln_scan(scanner, host, open_ports):
+    """Run NSE vulnerability scripts against open ports."""
+    port_str = ",".join(str(p["port"]) for p in open_ports)
+    print(f"\n[*] Running vulnerability scripts on {host}...")
+    scanner.scan(hosts=host, ports=port_str, arguments="--script vuln")
+    vulns = []
+    if host in scanner.all_hosts():
+        for proto in scanner[host].all_protocols():
+            for port in scanner[host][proto]:
+                svc = scanner[host][proto][port]
+                if "script" in svc:
+                    for script_name, output in svc["script"].items():
+                        if "VULNERABLE" in str(output).upper() or "CVE-" in str(output).upper():
+                            vulns.append({"host": host, "port": port, "script": script_name, "output": output[:500]})
+                            print(f"  [!] VULN {host}:{port} - {script_name}")
+    return vulns
+
+
+def generate_report(discovery, port_results, version_info, vulnerabilities, output_dir):
+    """Generate JSON and CSV reports from scan results."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report = {
+        "scan_date": datetime.now().isoformat(),
+        "hosts_discovered": len(discovery),
+        "hosts": discovery,
+        "port_scan_results": port_results,
+        "version_info": version_info,
+        "vulnerabilities": vulnerabilities,
+    }
+    json_path = os.path.join(output_dir, f"scan_report_{timestamp}.json")
+    with open(json_path, "w") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"\n[*] JSON report saved to {json_path}")
+
+    csv_path = os.path.join(output_dir, f"open_ports_{timestamp}.csv")
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Host", "Port", "Protocol", "Service", "Product", "Version"])
+        for host, ports in port_results.items():
+            for p in ports:
+                writer.writerow([host, p["port"], p["protocol"], p["service"], p["product"], p["version"]])
+    print(f"[*] CSV report saved to {csv_path}")
+    return json_path, csv_path
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Nmap Advanced Network Scanner Agent")
+    parser.add_argument("target", help="Target IP, CIDR range, or hostname")
+    parser.add_argument("-p", "--ports", default="1-1024", help="Port range to scan (default: 1-1024)")
+    parser.add_argument("-t", "--timing", default="T4", choices=["T0", "T1", "T2", "T3", "T4", "T5"])
+    parser.add_argument("--vuln", action="store_true", help="Run NSE vulnerability scripts")
+    parser.add_argument("--version-scan", action="store_true", help="Run service version detection")
+    parser.add_argument("-o", "--output", default=".", help="Output directory for reports")
+    args = parser.parse_args()
+
+    os.makedirs(args.output, exist_ok=True)
+    scanner = nmap.PortScanner()
+    print(f"[*] Nmap version: {scanner.nmap_version()}")
+    print(f"[*] Target: {args.target} | Ports: {args.ports} | Timing: {args.timing}")
+
+    hosts = discover_hosts(scanner, args.target, args.timing)
+    if not hosts:
+        print("[-] No live hosts found. Exiting.")
+        sys.exit(0)
+
+    port_results = scan_ports(scanner, hosts, args.ports, args.timing)
+    version_info, vulnerabilities = {}, []
+
+    for host, open_ports in port_results.items():
+        if not open_ports:
+            continue
+        if args.version_scan:
+            version_info[host] = service_version_scan(scanner, host, open_ports)
+        if args.vuln:
+            vulnerabilities.extend(vuln_scan(scanner, host, open_ports))
+
+    generate_report(hosts, port_results, version_info, vulnerabilities, args.output)
+    total_open = sum(len(p) for p in port_results.values())
+    print(f"\n[*] Scan complete: {len(hosts)} hosts, {total_open} open ports, {len(vulnerabilities)} vulns found")
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-dns-enumeration-and-zone-transfer/SKILL.md #####
+---
+name: performing-dns-enumeration-and-zone-transfer
+description: 'Enumerates DNS records, attempts zone transfers, brute-forces subdomains,
+  and maps DNS infrastructure during authorized reconnaissance to identify attack
+  surface, misconfigurations, and information disclosure in target domains.
+
+  '
+domain: cybersecurity
+subdomain: network-security
+tags:
+- network-security
+- dns
+- enumeration
+- zone-transfer
+- reconnaissance
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1046
+- T1040
+- T1557
+- T1071
+- T1595
+---
+# Performing DNS Enumeration and Zone Transfer
+
+## When to Use
+
+- Mapping the external attack surface of a target organization during authorized penetration tests
+- Discovering hidden subdomains, internal hostnames, and IP addresses exposed via DNS records
+- Testing whether DNS servers allow unauthorized zone transfers that leak the entire zone file
+- Identifying mail servers, name servers, and service records for further targeted testing
+- Validating DNS security configurations including DNSSEC, SPF, DKIM, and DMARC
+
+**Do not use** against domains you do not have authorization to test, for DNS amplification or reflection attacks, or to overwhelm DNS servers with excessive query volumes.
+
+## Prerequisites
+
+- Written authorization to perform DNS enumeration against the target domain
+- DNS enumeration tools installed: dig, nslookup, host, dnsrecon, dnsenum, subfinder, amass
+- Network access to the target's DNS servers (UDP/TCP port 53)
+- Wordlist for subdomain brute-forcing (SecLists dns-wordlist or similar)
+- Understanding of DNS record types (A, AAAA, CNAME, MX, NS, TXT, SOA, SRV, PTR)
+
+## Workflow
+
+### Step 1: Identify DNS Servers and Basic Records
+
+```bash
+# Find authoritative name servers
+dig NS example.com +short
+# ns1.example.com.
+# ns2.example.com.
+
+# Get SOA record for zone metadata
+dig SOA example.com +short
+# ns1.example.com. admin.example.com. 2024031501 3600 900 604800 86400
+
+# Enumerate all common record types
+dig example.com ANY +noall +answer
+
+# Get MX records (mail servers)
+dig MX example.com +short
+# 10 mail.example.com.
+# 20 mail-backup.example.com.
+
+# Get TXT records (SPF, DKIM, DMARC, verification)
+dig TXT example.com +short
+
+# Check for DMARC policy
+dig TXT _dmarc.example.com +short
+
+# Check for DKIM selectors
+dig TXT default._domainkey.example.com +short
+dig TXT selector1._domainkey.example.com +short
+dig TXT google._domainkey.example.com +short
+
+# Get SRV records for common services
+dig SRV _sip._tcp.example.com +short
+dig SRV _ldap._tcp.example.com +short
+dig SRV _kerberos._tcp.example.com +short
+```
+
+### Step 2: Attempt Zone Transfers
+
+```bash
+# Attempt AXFR zone transfer against each name server
+dig AXFR example.com @ns1.example.com
+dig AXFR example.com @ns2.example.com
+
+# Use host command for zone transfer
+host -t axfr example.com ns1.example.com
+
+# Use dnsrecon for automated zone transfer attempts
+dnsrecon -d example.com -t axfr
+
+# If zone transfer succeeds, save the output
+dig AXFR example.com @ns1.example.com > zone_transfer_results.txt
+
+# Test for IXFR (incremental zone transfer)
+dig IXFR=2024031500 example.com @ns1.example.com
+```
+
+### Step 3: Subdomain Enumeration via Brute Force
+
+```bash
+# Use dnsenum for comprehensive enumeration
+dnsenum --dnsserver ns1.example.com --enum -f /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -r example.com -o dnsenum_output.xml
+
+# Use dnsrecon with brute force
+dnsrecon -d example.com -t brt -D /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt
+
+# Use gobuster for fast DNS brute forcing
+gobuster dns -d example.com -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt -t 50 -o gobuster_dns.txt
+
+# Use subfinder for passive subdomain discovery
+subfinder -d example.com -all -o subfinder_results.txt
+
+# Use amass for comprehensive enumeration (passive + active)
+amass enum -d example.com -passive -o amass_passive.txt
+amass enum -d example.com -active -brute -o amass_active.txt
+
+# Combine and deduplicate results
+cat subfinder_results.txt amass_passive.txt amass_active.txt gobuster_dns.txt | sort -u > all_subdomains.txt
+```
+
+### Step 4: Reverse DNS and PTR Enumeration
+
+```bash
+# Reverse DNS lookup on discovered IP ranges
+dnsrecon -d example.com -t rvl -r 10.10.0.0/24
+
+# PTR record enumeration for IP range
+for ip in $(seq 1 254); do
+  result=$(dig -x 10.10.1.$ip +short 2>/dev/null)
+  if [ -n "$result" ]; then
+    echo "10.10.1.$ip -> $result"
+  fi
+done
+
+# Use Nmap for reverse DNS on a subnet
+nmap -sL 10.10.0.0/24 | grep "(" | awk '{print $5, $6}'
+
+# Check for DNS cache snooping (information about queried domains)
+dig @ns1.example.com www.competitor.com +norecurse
+```
+
+### Step 5: Analyze DNS Security Configuration
+
+```bash
+# Check DNSSEC validation
+dig example.com +dnssec +short
+dig DNSKEY example.com +short
+dig DS example.com +short
+
+# Test for DNS rebinding vulnerability
+# Check if the DNS server has a short TTL that could enable rebinding
+dig example.com +noall +answer | grep -i ttl
+
+# Check for open recursive resolver (misconfiguration)
+dig @ns1.example.com google.com +recurse
+# If it resolves, the server is an open resolver
+
+# Check for wildcard DNS records
+dig nonexistent-subdomain-xyz123.example.com +short
+# If it resolves, a wildcard record exists
+
+# Test DNS over HTTPS/TLS support
+# DoH test
+curl -s -H 'accept: application/dns-json' 'https://dns.google/resolve?name=example.com&type=A'
+
+# Verify SPF record for email security
+dig TXT example.com +short | grep "v=spf1"
+# Check for overly permissive SPF (+all, ?all)
+```
+
+### Step 6: Resolve and Map All Discovered Subdomains
+
+```bash
+# Resolve all discovered subdomains to IP addresses
+while read subdomain; do
+  ip=$(dig +short A "$subdomain" | head -1)
+  if [ -n "$ip" ]; then
+    echo "$subdomain,$ip"
+  fi
+done < all_subdomains.txt > resolved_subdomains.csv
+
+# Identify unique IP addresses and their locations
+cut -d',' -f2 resolved_subdomains.csv | sort -u > unique_ips.txt
+
+# Check for internal IP addresses leaked via DNS
+grep -E "^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\." resolved_subdomains.csv > internal_ip_leaks.txt
+
+# Use httpx to probe web services on discovered subdomains
+cat all_subdomains.txt | httpx -title -status-code -tech-detect -o httpx_results.txt
+
+# Screenshot web services for documentation
+cat all_subdomains.txt | httpx -screenshot -o screenshots/
+```
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **Zone Transfer (AXFR)** | DNS mechanism that replicates the complete zone file from a primary to secondary server; unauthorized transfers expose all records in the zone |
+| **Subdomain Enumeration** | Process of discovering valid subdomains through brute force, certificate transparency logs, search engines, and passive DNS databases |
+| **DNSSEC** | DNS Security Extensions that add cryptographic signatures to DNS responses, preventing cache poisoning and spoofing attacks |
+| **SPF/DKIM/DMARC** | Email authentication protocols defined in DNS TXT records that prevent email spoofing and domain impersonation |
+| **Wildcard DNS** | A DNS record using an asterisk (*) that matches any query for non-existent subdomains, potentially masking enumeration results |
+| **PTR Record** | Reverse DNS record that maps an IP address to a hostname, often revealing internal naming conventions and server roles |
+
+## Tools & Systems
+
+- **dig**: Standard DNS lookup utility with full support for all record types, DNSSEC validation, and zone transfer queries
+- **dnsrecon**: Comprehensive DNS enumeration tool supporting zone transfers, brute force, reverse lookup, cache snooping, and Google dork queries
+- **subfinder**: Fast passive subdomain discovery tool that queries certificate transparency logs, search engines, and DNS databases
+- **Amass (OWASP)**: Advanced attack surface mapping tool with both passive and active DNS enumeration, graph analysis, and data source integration
+- **gobuster**: Fast brute-force tool for DNS subdomain enumeration using configurable wordlists and concurrent threads
+
+## Common Scenarios
+
+### Scenario: External Reconnaissance for a Web Application Penetration Test
+
+**Context**: A security consultant is performing external reconnaissance for a web application penetration test. The client's primary domain is example.com, and the scope includes all subdomains and related infrastructure. The consultant has authorization to enumerate DNS records and probe discovered web services.
+
+**Approach**:
+1. Query NS, MX, TXT, and SOA records for example.com to map the DNS infrastructure
+2. Attempt zone transfers against both nameservers -- ns2 succeeds, revealing 347 DNS records including internal staging environments
+3. Run subfinder and amass in passive mode to discover 89 additional subdomains from certificate transparency logs
+4. Brute-force subdomains with a 20,000-word list using gobuster, discovering 12 more subdomains not found in passive sources
+5. Resolve all subdomains and identify 15 that resolve to internal RFC1918 addresses (information disclosure)
+6. Probe all web-accessible subdomains with httpx, discovering a staging environment (staging.example.com) with default credentials
+7. Report zone transfer vulnerability, internal IP disclosure, and exposed staging environment to the client
+
+**Pitfalls**:
+- Sending thousands of DNS queries per second and triggering rate limiting or DNS-based DDoS protection
+- Not checking for wildcard DNS records, resulting in false positive subdomain discoveries
+- Missing subdomains that use separate DNS providers or CDN-specific CNAME records
+- Overlooking TXT records that contain API keys, verification tokens, or internal comments
+
+## Output Format
+
+```
+## DNS Enumeration Report
+
+**Target Domain**: example.com
+**Authorized Nameservers**: ns1.example.com (203.0.113.10), ns2.example.com (203.0.113.11)
+
+### Zone Transfer Status
+| Nameserver | AXFR Result | Records Obtained |
+|------------|-------------|------------------|
+| ns1.example.com | REFUSED | 0 |
+| ns2.example.com | SUCCESS | 347 records |
+
+### Subdomain Discovery Summary
+| Method | Subdomains Found |
+|--------|-----------------|
+| Zone Transfer | 347 |
+| Passive (subfinder + amass) | 89 |
+| Active Brute Force | 12 |
+| **Total Unique** | **412** |
+
+### Critical Findings
+1. **Zone Transfer Allowed** (High): ns2.example.com allows AXFR from any source
+2. **Internal IP Disclosure** (Medium): 15 subdomains resolve to RFC1918 addresses
+3. **Exposed Staging Environment** (High): staging.example.com accessible with default credentials
+4. **Missing DMARC Policy** (Medium): No DMARC record found, enabling email spoofing
+5. **Weak SPF Record** (Low): SPF uses ~all (soft fail) instead of -all (hard fail)
+```
+
+##### END FILE #####
+
+##### FILE: performing-dns-enumeration-and-zone-transfer/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+
+-----
+[END PART 1/14] — رد غير "Received part 1/14"

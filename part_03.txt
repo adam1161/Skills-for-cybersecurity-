@@ -1,0 +1,1174 @@
+[PART 3/14]
+-----
+            f.write(f"| {url} | {status} | {title} | {techs} |\n")
+
+        if takeover_candidates:
+            f.write("\n## Potential Subdomain Takeover Candidates\n\n")
+            f.write("| Subdomain | CNAME | Service |\n")
+            f.write("|-----------|-------|---------|\n")
+            for candidate in takeover_candidates:
+                f.write(f"| {candidate['subdomain']} | {candidate['cname']} | {candidate['service']} |\n")
+
+        f.write("\n## All Discovered Subdomains\n\n")
+        for sub in sorted(subdomains):
+            f.write(f"- {sub}\n")
+
+    print(f"[+] Report saved to {report_path}")
+    return report_path
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python process.py <domain> [output_dir] [--all]")
+        sys.exit(1)
+
+    domain = sys.argv[1]
+    output_dir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "./recon_output"
+    use_all = "--all" in sys.argv
+
+    print(f"[*] Starting subdomain enumeration for {domain}")
+    subdomains = run_subfinder(domain, output_dir, use_all)
+
+    if not subdomains:
+        print("[-] No subdomains found. Exiting.")
+        sys.exit(0)
+
+    print("[*] Validating live hosts with httpx...")
+    live_hosts = validate_with_httpx(subdomains, output_dir)
+
+    print("[*] Checking for subdomain takeover candidates...")
+    takeover_candidates = detect_takeover_candidates(subdomains)
+
+    print("[*] Generating report...")
+    generate_report(domain, subdomains, live_hosts, takeover_candidates, output_dir)
+
+    print(f"[+] Enumeration complete. Results saved to {output_dir}/")
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: analyzing-network-traffic-with-wireshark/SKILL.md #####
+---
+name: analyzing-network-traffic-with-wireshark
+description: 'Captures and analyzes network packet data using Wireshark and tshark
+  to identify malicious traffic patterns, diagnose protocol issues, extract artifacts,
+  and support incident response investigations on authorized network segments.
+
+  '
+domain: cybersecurity
+subdomain: network-security
+tags:
+- network-security
+- wireshark
+- packet-analysis
+- traffic-analysis
+- pcap
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1040
+- T1071
+- T1557
+- T1046
+---
+# Analyzing Network Traffic with Wireshark
+
+## When to Use
+
+- Investigating suspected network intrusions by examining packet-level evidence of command-and-control traffic, data exfiltration, or lateral movement
+- Diagnosing network performance issues such as retransmissions, fragmentation, or DNS resolution failures
+- Analyzing malware communication patterns by capturing traffic from sandboxed or isolated hosts
+- Validating firewall and IDS rules by confirming what traffic is actually traversing network segments
+- Extracting files, credentials, or indicators of compromise from captured network sessions
+
+**Do not use** to capture traffic on networks without authorization, to intercept private communications without legal authority, or as a substitute for full-featured SIEM platforms in production monitoring.
+
+## Prerequisites
+
+- Wireshark 4.0+ and tshark command-line utility installed
+- Root/sudo privileges or membership in the `wireshark` group for live packet capture
+- Network interface access (physical NIC, span port, or network tap) to the monitored segment
+- Sufficient disk space for packet capture files (estimate 1 GB per minute on busy gigabit links)
+- Familiarity with TCP/IP protocols, HTTP, DNS, TLS, and SMB at the packet level
+
+## Workflow
+
+### Step 1: Configure Capture Environment
+
+Set up the capture interface and filters to target relevant traffic:
+
+```bash
+# List available interfaces
+tshark -D
+
+# Start capture on eth0 with a capture filter to limit scope
+tshark -i eth0 -f "host 10.10.5.23 and (port 80 or port 443 or port 445)" -w /tmp/capture.pcapng
+
+# Capture with ring buffer to manage disk usage (10 files, 100MB each)
+tshark -i eth0 -b filesize:102400 -b files:10 -w /tmp/rolling_capture.pcapng
+
+# Capture on multiple interfaces simultaneously
+tshark -i eth0 -i eth1 -w /tmp/multi_interface.pcapng
+```
+
+For Wireshark GUI, set capture filter in the Capture Options dialog before starting.
+
+### Step 2: Apply Display Filters for Targeted Analysis
+
+```bash
+# Filter HTTP traffic containing suspicious user agents
+tshark -r capture.pcapng -Y "http.user_agent contains \"curl\" or http.user_agent contains \"Wget\""
+
+# Find DNS queries to suspicious TLDs
+tshark -r capture.pcapng -Y "dns.qry.name contains \".xyz\" or dns.qry.name contains \".top\" or dns.qry.name contains \".tk\""
+
+# Identify TCP retransmissions indicating network issues
+tshark -r capture.pcapng -Y "tcp.analysis.retransmission"
+
+# Filter SMB traffic for lateral movement detection
+tshark -r capture.pcapng -Y "smb2.cmd == 5 or smb2.cmd == 3" -T fields -e ip.src -e ip.dst -e smb2.filename
+
+# Find cleartext credential transmission
+tshark -r capture.pcapng -Y "ftp.request.command == \"PASS\" or http.authbasic"
+
+# Detect beaconing patterns (regular interval connections)
+tshark -r capture.pcapng -Y "ip.dst == 203.0.113.50" -T fields -e frame.time_relative -e ip.src -e tcp.dstport
+```
+
+### Step 3: Protocol-Specific Deep Analysis
+
+```bash
+# Follow a TCP stream to reconstruct a conversation
+tshark -r capture.pcapng -q -z follow,tcp,ascii,0
+
+# Analyze HTTP request/response pairs
+tshark -r capture.pcapng -Y "http" -T fields -e frame.time -e ip.src -e ip.dst -e http.request.method -e http.request.uri -e http.response.code
+
+# Extract DNS query/response statistics
+tshark -r capture.pcapng -q -z dns,tree
+
+# Analyze TLS handshakes for weak cipher suites
+tshark -r capture.pcapng -Y "tls.handshake.type == 2" -T fields -e ip.src -e ip.dst -e tls.handshake.ciphersuite
+
+# SMB file access enumeration
+tshark -r capture.pcapng -Y "smb2" -T fields -e frame.time -e ip.src -e ip.dst -e smb2.filename -e smb2.cmd
+```
+
+### Step 4: Extract Artifacts and IOCs
+
+```bash
+# Export HTTP objects (files transferred over HTTP)
+tshark -r capture.pcapng --export-objects http,/tmp/http_objects/
+
+# Export SMB objects (files transferred over SMB)
+tshark -r capture.pcapng --export-objects smb,/tmp/smb_objects/
+
+# Extract all unique destination IPs for threat intelligence lookup
+tshark -r capture.pcapng -T fields -e ip.dst | sort -u > unique_dest_ips.txt
+
+# Extract SSL/TLS certificate information
+tshark -r capture.pcapng -Y "tls.handshake.type == 11" -T fields -e x509sat.uTF8String -e x509ce.dNSName
+
+# Extract all URLs accessed
+tshark -r capture.pcapng -Y "http.request" -T fields -e http.host -e http.request.uri | sort -u > urls.txt
+
+# Hash extracted files for IOC matching
+find /tmp/http_objects/ -type f -exec sha256sum {} \; > extracted_file_hashes.txt
+```
+
+### Step 5: Statistical Analysis and Anomaly Detection
+
+```bash
+# Protocol hierarchy statistics
+tshark -r capture.pcapng -q -z io,phs
+
+# Conversation statistics sorted by bytes
+tshark -r capture.pcapng -q -z conv,tcp -z conv,udp
+
+# Identify top talkers
+tshark -r capture.pcapng -q -z endpoints,ip
+
+# IO graph data (packets per second)
+tshark -r capture.pcapng -q -z io,stat,1,"COUNT(frame) frame"
+
+# Detect port scanning patterns
+tshark -r capture.pcapng -Y "tcp.flags.syn == 1 and tcp.flags.ack == 0" -T fields -e ip.src -e tcp.dstport | sort | uniq -c | sort -rn | head -20
+```
+
+### Step 6: Generate Reports and Export Evidence
+
+```bash
+# Export filtered packets to a new PCAP for evidence preservation
+tshark -r capture.pcapng -Y "ip.addr == 10.10.5.23 and tcp.port == 4444" -w evidence_c2_traffic.pcapng
+
+# Generate packet summary in CSV format
+tshark -r capture.pcapng -T fields -E header=y -E separator=, -e frame.number -e frame.time -e ip.src -e ip.dst -e ip.proto -e tcp.srcport -e tcp.dstport -e frame.len > traffic_summary.csv
+
+# Create PDML (XML) output for programmatic analysis
+tshark -r capture.pcapng -T pdml > capture_analysis.xml
+
+# Calculate capture file hash for chain of custody
+sha256sum capture.pcapng > capture_hash.txt
+```
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **Capture Filter (BPF)** | Berkeley Packet Filter syntax applied at capture time to limit which packets are recorded, reducing file size and improving performance |
+| **Display Filter** | Wireshark-specific filter syntax applied to already-captured packets for focused analysis without altering the capture file |
+| **PCAPNG** | Next-generation packet capture format supporting multiple interfaces, name resolution, annotations, and metadata in a single file |
+| **TCP Stream** | Reassembled sequence of TCP segments representing a complete bidirectional conversation between two endpoints |
+| **Protocol Dissector** | Wireshark module that decodes a specific protocol's fields and structure, enabling deep inspection of packet contents |
+| **IO Graph** | Time-series visualization of packet or byte rates over the capture duration, useful for identifying traffic spikes or beaconing |
+
+## Tools & Systems
+
+- **Wireshark 4.0+**: GUI-based packet analyzer with protocol dissectors for 3,000+ protocols, stream reassembly, and export capabilities
+- **tshark**: Command-line version of Wireshark for headless capture, batch processing, and scripted analysis pipelines
+- **tcpdump**: Lightweight packet capture tool for quick captures on remote systems without GUI dependencies
+- **mergecap**: Wireshark utility for combining multiple capture files into a single PCAP for unified analysis
+- **editcap**: Wireshark utility for splitting, filtering, and converting between capture file formats
+
+## Common Scenarios
+
+### Scenario: Investigating Suspected Data Exfiltration via DNS Tunneling
+
+**Context**: The SOC team detected unusually high DNS query volumes from a workstation (10.10.3.45) to an external domain. The SIEM alert flagged DNS queries averaging 200 per minute compared to the baseline of 15. A packet capture was initiated from the network tap on the workstation's VLAN.
+
+**Approach**:
+1. Capture traffic from the workstation's subnet using `tshark -i eth2 -f "host 10.10.3.45 and port 53" -w dns_exfil_investigation.pcapng`
+2. Analyze DNS query patterns: `tshark -r dns_exfil_investigation.pcapng -Y "dns.qry.name contains \"suspect-domain.xyz\"" -T fields -e frame.time -e dns.qry.name`
+3. Examine subdomain labels for encoded data (long base64-like subdomains indicate tunneling): `tshark -r dns_exfil_investigation.pcapng -Y "dns.qry.type == 16" -T fields -e dns.qry.name -e dns.txt`
+4. Calculate data volume by summing query name lengths to estimate exfiltration bandwidth
+5. Extract unique query names and decode base64 subdomains to recover exfiltrated content
+6. Export evidence packets to a separate PCAP and generate SHA-256 hash for chain of custody
+
+**Pitfalls**:
+- Capturing unfiltered traffic on a busy network and running out of disk space before collecting relevant data
+- Using display filters instead of capture filters, resulting in massive files that are slow to process
+- Overlooking encrypted DNS (DoH/DoT) traffic that bypasses traditional DNS capture on port 53
+- Failing to establish packet capture hash and chain of custody documentation for forensic evidence
+
+## Output Format
+
+```
+## Traffic Analysis Report
+
+**Case ID**: IR-2024-0847
+**Capture File**: dns_exfil_investigation.pcapng
+**SHA-256**: a3f2b8c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1
+**Duration**: 2024-03-15 14:00:00 to 14:45:00 UTC
+**Source Interface**: eth2 (VLAN 30 span port)
+
+### Findings
+
+**1. DNS Tunneling Confirmed**
+- Source: 10.10.3.45
+- Destination DNS: 8.8.8.8 (forwarded to ns1.suspect-domain.xyz)
+- Query volume: 9,247 queries in 45 minutes (205/min vs 15/min baseline)
+- Average subdomain label length: 63 characters (base64-encoded data)
+- Estimated data exfiltrated: ~2.3 MB via TXT record responses
+
+**2. Indicators of Compromise**
+- Domain: suspect-domain.xyz (registered 3 days prior)
+- Nameserver: ns1.suspect-domain.xyz (203.0.113.50)
+- Query pattern: TXT record requests with base64-encoded subdomains
+- Response pattern: TXT records containing base64-encoded payloads
+```
+
+##### END FILE #####
+
+##### FILE: analyzing-network-traffic-with-wireshark/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: analyzing-network-traffic-with-wireshark/references/api-reference.md #####
+# API Reference: Wireshark and tshark
+
+## Live Capture
+```bash
+tshark -i eth0                              # Capture on interface
+tshark -i eth0 -w output.pcap              # Write to file
+tshark -i eth0 -a duration:60              # Capture for 60 seconds
+tshark -i eth0 -f "port 80"               # BPF capture filter
+tshark -D                                   # List interfaces
+```
+
+## Display Filters (Read Mode)
+```bash
+tshark -r capture.pcap -Y "<filter>"
+```
+
+### Common Filters
+| Filter | Purpose |
+|--------|---------|
+| `ip.addr == 10.0.0.5` | Traffic to/from IP |
+| `tcp.port == 443` | Traffic on port 443 |
+| `http.request` | HTTP requests only |
+| `dns.qr == 0` | DNS queries only |
+| `tls.handshake.type == 1` | TLS Client Hello |
+| `tcp.flags.syn == 1 && tcp.flags.ack == 0` | SYN-only |
+| `frame.len > 1500` | Large frames |
+| `tcp.analysis.retransmission` | Retransmissions |
+| `icmp` | ICMP traffic |
+
+## Field Extraction
+```bash
+tshark -r capture.pcap -T fields \
+  -e frame.time -e ip.src -e ip.dst -e tcp.dstport \
+  -E separator="," -E header=y
+```
+
+### Common Fields
+| Field | Description |
+|-------|-------------|
+| `frame.time` | Packet timestamp |
+| `ip.src` / `ip.dst` | Source/destination IP |
+| `tcp.srcport` / `tcp.dstport` | TCP ports |
+| `http.request.method` | HTTP method |
+| `http.host` | HTTP Host header |
+| `http.request.uri` | Request URI |
+| `http.user_agent` | User-Agent |
+| `dns.qry.name` | DNS query name |
+| `tls.handshake.extensions_server_name` | TLS SNI |
+| `tls.handshake.ja3` | JA3 fingerprint |
+
+## Statistics
+```bash
+tshark -r capture.pcap -q -z conv,ip         # IP conversations
+tshark -r capture.pcap -q -z endpoints,ip    # IP endpoints
+tshark -r capture.pcap -q -z io,stat,60      # I/O per minute
+tshark -r capture.pcap -q -z io,phs          # Protocol hierarchy
+tshark -r capture.pcap -q -z http,tree       # HTTP stats
+tshark -r capture.pcap -q -z dns,tree        # DNS stats
+tshark -r capture.pcap -q -z expert          # Expert info
+```
+
+## Object Export
+```bash
+tshark -r capture.pcap --export-objects "http,/output/dir"
+tshark -r capture.pcap --export-objects "smb,/output/dir"
+tshark -r capture.pcap --export-objects "tftp,/output/dir"
+tshark -r capture.pcap --export-objects "imf,/output/dir"
+```
+
+## Stream Following
+```bash
+tshark -r capture.pcap -z follow,tcp,ascii,0
+tshark -r capture.pcap -z follow,http,ascii,0
+tshark -r capture.pcap -z follow,tls,ascii,0
+```
+
+## Wireshark GUI Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+F` | Find packet |
+| `Ctrl+G` | Go to packet |
+| `Ctrl+Shift+E` | Export objects |
+| `Ctrl+H` | Follow stream |
+
+## editcap - PCAP Manipulation
+
+```bash
+editcap -A "2024-01-15 09:00" -B "2024-01-15 10:00" in.pcap out.pcap  # Time filter
+editcap -c 1000 large.pcap split.pcap    # Split into 1000-packet files
+editcap -F pcap in.pcapng out.pcap       # Convert format
+```
+
+## mergecap - Merge PCAPs
+
+```bash
+mergecap -w merged.pcap file1.pcap file2.pcap
+```
+
+##### END FILE #####
+
+##### FILE: analyzing-network-traffic-with-wireshark/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Wireshark/tshark packet analysis agent for network security investigations."""
+
+import subprocess
+import shlex
+import os
+import sys
+
+
+def run_tshark(pcap_path, args):
+    """Execute tshark with custom arguments."""
+    cmd = ["tshark", "-r", pcap_path] + shlex.split(args)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    return result.stdout.strip(), result.stderr.strip(), result.returncode
+
+
+def capture_live(interface, output_path, duration=60, capture_filter=None):
+    """Start a live packet capture using tshark."""
+    cmd = ["tshark", "-i", interface, "-w", output_path, "-a", f"duration:{duration}"]
+    if capture_filter:
+        cmd += ["-f", capture_filter]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=duration + 10)
+    return result.returncode == 0
+
+
+def get_capture_summary(pcap_path):
+    """Get overall PCAP capture statistics."""
+    stdout, _, _ = run_tshark(pcap_path, "-q -z io,stat,0")
+    return stdout
+
+
+def get_protocol_hierarchy(pcap_path):
+    """Get protocol hierarchy statistics."""
+    stdout, _, _ = run_tshark(pcap_path, "-q -z io,phs")
+    return stdout
+
+
+def get_conversations(pcap_path, conv_type="ip"):
+    """Get conversation statistics (ip, tcp, udp, ethernet)."""
+    stdout, _, _ = run_tshark(pcap_path, f"-q -z conv,{conv_type}")
+    return stdout
+
+
+def get_endpoints(pcap_path, endpoint_type="ip"):
+    """Get endpoint statistics."""
+    stdout, _, _ = run_tshark(pcap_path, f"-q -z endpoints,{endpoint_type}")
+    return stdout
+
+
+def extract_http_requests(pcap_path):
+    """Extract HTTP requests with key fields."""
+    stdout, _, _ = run_tshark(
+        pcap_path,
+        '-Y "http.request" -T fields -e frame.time -e ip.src -e ip.dst '
+        '-e http.request.method -e http.host -e http.request.uri -e http.user_agent '
+        '-E separator="|"'
+    )
+    requests = []
+    for line in stdout.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 6:
+            requests.append({
+                "time": parts[0],
+                "src": parts[1],
+                "dst": parts[2],
+                "method": parts[3],
+                "host": parts[4],
+                "uri": parts[5],
+                "user_agent": parts[6] if len(parts) > 6 else "",
+            })
+    return requests
+
+
+def extract_dns_queries(pcap_path):
+    """Extract DNS queries and responses."""
+    stdout, _, _ = run_tshark(
+        pcap_path,
+        '-Y "dns" -T fields -e frame.time -e ip.src -e ip.dst '
+        '-e dns.qry.name -e dns.qry.type -e dns.flags.response '
+        '-E separator="|"'
+    )
+    queries = []
+    for line in stdout.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 5:
+            queries.append({
+                "time": parts[0],
+                "src": parts[1],
+                "dst": parts[2],
+                "query": parts[3],
+                "type": parts[4],
+                "is_response": parts[5] if len(parts) > 5 else "0",
+            })
+    return queries
+
+
+def extract_tls_info(pcap_path):
+    """Extract TLS handshake information including JA3 fingerprints."""
+    stdout, _, _ = run_tshark(
+        pcap_path,
+        '-Y "tls.handshake.type==1" -T fields -e ip.src -e ip.dst '
+        '-e tls.handshake.extensions_server_name -e tls.handshake.ja3 '
+        '-E separator="|"'
+    )
+    tls_sessions = []
+    for line in stdout.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 3:
+            tls_sessions.append({
+                "client": parts[0],
+                "server": parts[1],
+                "sni": parts[2],
+                "ja3": parts[3] if len(parts) > 3 else "",
+            })
+    return tls_sessions
+
+
+def detect_suspicious_traffic(pcap_path):
+    """Detect common suspicious traffic patterns."""
+    findings = []
+
+    # Large ICMP packets (possible data exfiltration)
+    stdout, _, rc = run_tshark(pcap_path, '-Y "icmp && frame.len > 100" -T fields -e ip.src -e ip.dst -e frame.len')
+    if stdout:
+        findings.append({
+            "type": "Large ICMP",
+            "description": "ICMP packets with large payloads detected",
+            "count": len(stdout.splitlines()),
+        })
+
+    # DNS TXT queries (possible tunneling)
+    stdout, _, rc = run_tshark(pcap_path, '-Y "dns.qry.type==16" -T fields -e ip.src -e dns.qry.name')
+    if stdout:
+        findings.append({
+            "type": "DNS TXT Queries",
+            "description": "DNS TXT record queries detected",
+            "count": len(stdout.splitlines()),
+        })
+
+    # Non-standard HTTP ports
+    stdout, _, rc = run_tshark(
+        pcap_path,
+        '-Y "http && tcp.port != 80 && tcp.port != 443 && tcp.port != 8080" '
+        '-T fields -e ip.src -e ip.dst -e tcp.dstport'
+    )
+    if stdout:
+        findings.append({
+            "type": "HTTP on non-standard port",
+            "description": "HTTP traffic on unusual ports",
+            "count": len(stdout.splitlines()),
+        })
+
+    return findings
+
+
+def export_http_objects(pcap_path, output_dir):
+    """Export HTTP transferred objects."""
+    os.makedirs(output_dir, exist_ok=True)
+    _, _, rc = run_tshark(pcap_path, f'--export-objects "http,{output_dir}"')
+    files = []
+    for f in os.listdir(output_dir):
+        fpath = os.path.join(output_dir, f)
+        files.append({"name": f, "size": os.path.getsize(fpath)})
+    return files
+
+
+def apply_display_filter(pcap_path, display_filter, fields):
+    """Apply a custom display filter and extract specified fields."""
+    field_str = " ".join(f"-e {f}" for f in fields)
+    stdout, _, _ = run_tshark(
+        pcap_path, f'-Y "{display_filter}" -T fields {field_str} -E separator="|"'
+    )
+    results = []
+    for line in stdout.splitlines():
+        parts = line.split("|")
+        results.append(dict(zip(fields, parts)))
+    return results
+
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("Wireshark/tshark Network Analysis Agent")
+    print("Packet analysis, protocol stats, artifact extraction")
+    print("=" * 60)
+
+    pcap = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if pcap and os.path.exists(pcap):
+        print(f"\n[*] Analyzing: {pcap}")
+
+        print("\n--- Capture Summary ---")
+        summary = get_capture_summary(pcap)
+        print(summary[:500] if summary else "  No stats available")
+
+        print("\n--- Protocol Hierarchy ---")
+        hierarchy = get_protocol_hierarchy(pcap)
+        print(hierarchy[:500] if hierarchy else "  No hierarchy available")
+
+        print("\n--- HTTP Requests ---")
+        http = extract_http_requests(pcap)
+        for r in http[:10]:
+            print(f"  {r['method']} {r['host']}{r['uri']}")
+
+        print("\n--- DNS Queries ---")
+        dns = extract_dns_queries(pcap)
+        queries_only = [d for d in dns if d["is_response"] == "0"]
+        print(f"  Total DNS queries: {len(queries_only)}")
+
+        print("\n--- TLS Sessions ---")
+        tls = extract_tls_info(pcap)
+        for t in tls[:10]:
+            print(f"  {t['client']} -> {t['sni']} (JA3={t['ja3'][:16]}...)" if t['ja3'] else
+                  f"  {t['client']} -> {t['sni']}")
+
+        print("\n--- Suspicious Traffic ---")
+        suspicious = detect_suspicious_traffic(pcap)
+        for s in suspicious:
+            print(f"  [!] {s['type']}: {s['description']} ({s['count']} occurrences)")
+    else:
+        print(f"\n[DEMO] Usage: python agent.py <capture.pcap>")
+
+##### END FILE #####
+
+##### FILE: analyzing-network-packets-with-scapy/SKILL.md #####
+---
+name: analyzing-network-packets-with-scapy
+description: Use Scapy to craft, send, sniff, and dissect TCP/UDP/ICMP/DNS packets, analyze pcap files, implement SYN scans, and detect anomalous traffic such as fragmented or malformed packets. Use when performing authorized network reconnaissance, protocol-level forensic analysis, or building traffic anomaly detection during security testing.
+domain: cybersecurity
+subdomain: network-security
+tags:
+- scapy
+- packet-analysis
+- network-forensics
+- protocol-dissection
+- pcap
+- traffic-analysis
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1040
+- T1071
+- T1046
+- T1557
+---
+
+# Analyzing Network Packets with Scapy
+
+## Overview
+
+Scapy is a Python packet manipulation library that enables crafting, sending, sniffing, and dissecting network packets at granular protocol layers. This skill covers using Scapy for security-relevant tasks including TCP/UDP/ICMP packet crafting, pcap file analysis, protocol field extraction, SYN scan implementation, DNS query analysis, and detecting anomalous traffic patterns such as unusually fragmented packets or malformed headers.
+
+
+## When to Use
+
+- When investigating security incidents that require analyzing network packets with scapy
+- When building detection rules or threat hunting queries for this domain
+- When SOC analysts need structured procedures for this analysis type
+- When validating security monitoring coverage for related attack techniques
+
+## Prerequisites
+
+- Python 3.8+ with `scapy` library installed (`pip install scapy`)
+- Root/administrator privileges for raw socket operations (sniffing, sending)
+- Npcap (Windows) or libpcap (Linux) for packet capture
+- Authorization to perform packet operations on target network
+
+## Steps
+
+1. Read and parse pcap/pcapng files with `rdpcap()` for offline analysis
+2. Extract protocol layers (IP, TCP, UDP, DNS, HTTP) and field values
+3. Compute traffic statistics: top talkers, protocol distribution, port frequency
+4. Detect SYN flood patterns by analyzing TCP flag ratios
+5. Identify DNS exfiltration indicators via query length and entropy analysis
+6. Craft custom probe packets for authorized network testing
+7. Export findings as structured JSON report
+
+## Expected Output
+
+JSON report containing packet statistics, protocol distribution, top source/destination IPs, detected anomalies (SYN floods, DNS tunneling indicators, fragmentation attacks), and per-flow summaries.
+
+##### END FILE #####
+
+##### FILE: analyzing-network-packets-with-scapy/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: analyzing-network-packets-with-scapy/references/api-reference.md #####
+# Scapy Network Packet Analysis API Reference
+
+## Core Scapy Functions
+
+### Reading Packets
+```python
+from scapy.all import rdpcap, sniff, wrpcap
+
+# Read pcap file
+packets = rdpcap("capture.pcap")
+
+# Live sniff with BPF filter (requires root)
+packets = sniff(filter="tcp port 80", count=100, iface="eth0")
+
+# Write packets to pcap
+wrpcap("output.pcap", packets)
+```
+
+### Packet Layer Access
+```python
+from scapy.all import IP, TCP, UDP, DNS, DNSQR, ICMP
+
+pkt = packets[0]
+pkt.haslayer(IP)        # Check if layer exists
+pkt[IP].src             # Source IP
+pkt[IP].dst             # Destination IP
+pkt[TCP].sport          # Source port
+pkt[TCP].dport          # Destination port
+pkt[TCP].flags          # TCP flags: S, SA, A, FA, R, PA
+pkt[DNS].qd.qname       # DNS query name
+pkt[ICMP].type          # ICMP type (8=echo request, 0=echo reply)
+```
+
+### Packet Crafting
+```python
+from scapy.all import IP, TCP, sr1, send
+
+# SYN probe (authorized testing only)
+syn = IP(dst="192.168.1.1") / TCP(dport=80, flags="S")
+response = sr1(syn, timeout=2, verbose=0)
+
+# ICMP ping
+ping = IP(dst="192.168.1.1") / ICMP()
+send(ping, verbose=0)
+
+# Custom DNS query
+dns = IP(dst="8.8.8.8") / UDP(dport=53) / DNS(rd=1, qd=DNSQR(qname="example.com"))
+```
+
+## Protocol Fields Reference
+
+### TCP Flags
+| Flag | Value | Meaning |
+|------|-------|---------|
+| S | 0x02 | SYN |
+| SA | 0x12 | SYN-ACK |
+| A | 0x10 | ACK |
+| F | 0x01 | FIN |
+| R | 0x04 | RST |
+| P | 0x08 | PSH |
+
+### ICMP Types
+| Type | Meaning |
+|------|---------|
+| 0 | Echo Reply |
+| 3 | Destination Unreachable |
+| 8 | Echo Request |
+| 11 | Time Exceeded |
+
+## BPF Filter Syntax
+```
+tcp port 443              # TCP traffic on port 443
+host 10.0.0.1             # All traffic to/from IP
+src net 192.168.0.0/24    # Source from subnet
+udp and port 53           # DNS traffic
+tcp[tcpflags] & tcp-syn != 0  # SYN packets only
+```
+
+## CLI Usage
+
+-----
+[END PART 3/14] — رد غير "Received part 3/14"

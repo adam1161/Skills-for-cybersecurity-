@@ -1,0 +1,655 @@
+[PART 14/14]
+-----
+# Conducting External Reconnaissance with OSINT
+
+## When to Use
+
+- Performing the initial reconnaissance phase of a penetration test to gather intelligence before active scanning
+- Mapping an organization's external attack surface to identify unknown or shadow IT assets
+- Collecting employee information, email formats, and organizational structure for social engineering campaigns
+- Identifying exposed credentials, leaked data, or sensitive documents published on the internet
+- Scoping the breadth of an organization's digital footprint prior to a red team engagement
+
+**Do not use** for stalking, harassment, or unauthorized surveillance of individuals. OSINT gathering must be conducted within the scope of an authorized engagement and comply with applicable privacy laws (GDPR, CCPA).
+
+## Prerequisites
+
+- Written authorization to perform reconnaissance against the target organization
+- Dedicated research workstation with a VPN or Tor for anonymized queries when required
+- OSINT framework tools installed: Amass, theHarvester, Shodan CLI, Recon-ng, SpiderFoot
+- API keys for Shodan, Censys, SecurityTrails, Hunter.io, VirusTotal, and GitHub for enhanced results
+- Disposable email accounts for accessing services that require registration during research
+
+## Workflow
+
+### Step 1: Domain and DNS Enumeration
+
+Enumerate all domains, subdomains, and DNS records associated with the target:
+
+- **Root domain identification**: Start with the primary domain and identify all related domains through reverse WHOIS lookups on registrant name, email, and organization using `whoxy.com` or `domaintools.com`
+- **Subdomain enumeration**: Run multiple tools for comprehensive coverage:
+  - `amass enum -passive -d target.com -o amass_subs.txt` for passive subdomain discovery from 40+ data sources
+  - `subfinder -d target.com -all -o subfinder_subs.txt` for fast passive enumeration
+  - `crt.sh` certificate transparency log queries: `curl -s "https://crt.sh/?q=%25.target.com&output=json" | jq -r '.[].name_value' | sort -u`
+- **DNS record analysis**: Query for all record types: `dig target.com ANY`, check for SPF, DKIM, DMARC records that reveal email infrastructure, and enumerate MX records to identify email providers
+- **Zone transfer attempt**: `dig axfr @ns1.target.com target.com` to check for misconfigured DNS servers
+- **Consolidate results**: Merge, deduplicate, and resolve all discovered subdomains to IP addresses. Map IP addresses to ASN and hosting providers.
+
+### Step 2: Infrastructure and Service Discovery
+
+Identify internet-facing infrastructure without directly scanning target systems:
+
+- **Shodan**: `shodan search "ssl.cert.subject.cn:target.com"` to find all internet-facing services with TLS certificates for the target domain. Also search by organization name and IP ranges.
+- **Censys**: Search for target's IP ranges and TLS certificates to identify services, technologies, and potential vulnerabilities indexed from internet-wide scanning
+- **Cloud asset discovery**: Check for S3 buckets (`target-com`, `target-backup`, `target-dev`), Azure Blob storage (`target.blob.core.windows.net`), and GCP storage using tools like `cloud_enum`
+- **WAF and CDN identification**: Use `wafw00f target.com` to identify web application firewalls and CDN providers that may mask the origin server IP
+- **Historical data**: Use Wayback Machine (`web.archive.org`) to find removed pages, old application versions, and forgotten endpoints
+
+### Step 3: Email and Personnel Intelligence
+
+Gather employee information and email addresses for social engineering preparation:
+
+- **Email harvesting**: `theHarvester -d target.com -b all -f harvest_results.html` to collect emails from search engines, LinkedIn, and data sources
+- **Email format identification**: Use `hunter.io` to determine the email format (first.last, flast, firstl) and verify deliverability
+- **LinkedIn reconnaissance**: Identify employees by department, particularly IT administrators, security team members, and executives. Note technologies mentioned in job postings and employee profiles.
+- **Organizational chart**: Build an org chart from LinkedIn data to understand reporting structures, identify key personnel, and map departments
+- **Social media analysis**: Review employee social media profiles for information about internal tools, technologies, office locations, badge photos, and security practices
+- **Job postings**: Analyze current and historical job postings on the company career page and job boards for technology stack details, tools, and infrastructure information
+
+### Step 4: Credential and Data Leak Analysis
+
+Search for exposed credentials and sensitive data:
+
+- **Breach databases**: Check `haveibeenpwned.com` API for breached email addresses associated with the target domain
+- **Paste sites**: Search Pastebin, GitHub Gists, and similar paste sites for leaked credentials, configuration files, or internal documents
+- **Code repositories**: Search GitHub, GitLab, and Bitbucket for:
+  - `org:target "password"`, `org:target "api_key"`, `org:target "secret"`
+  - Use `trufflehog` or `gitleaks` for automated secret scanning across the target's public repositories
+- **Document metadata**: Download publicly available documents (PDF, DOCX, XLSX) from the target website and extract metadata using `exiftool` to reveal internal usernames, software versions, printer names, and file paths
+- **Google dorking**: Use targeted search operators:
+  - `site:target.com filetype:pdf` for public documents
+  - `site:target.com inurl:admin` for admin panels
+  - `site:target.com "index of /"` for directory listings
+  - `site:pastebin.com "target.com"` for paste site mentions
+
+### Step 5: Technology Stack Profiling
+
+Identify the technologies, frameworks, and services used by the target:
+
+- **Web technology fingerprinting**: Use `whatweb target.com` or Wappalyzer browser extension to identify CMS, frameworks, JavaScript libraries, analytics, and server software
+- **SSL/TLS analysis**: `sslyze target.com` or `testssl.sh target.com` to identify cipher suites, protocol versions, certificate details, and cryptographic weaknesses
+- **JavaScript analysis**: Download and review JavaScript files for framework identifiers, API endpoints, internal hostnames, and version strings
+- **DNS-based service identification**: Review TXT records for service providers (e.g., `v=spf1 include:_spf.google.com` indicates Google Workspace, `MS=msXXXXXX` indicates Microsoft 365)
+- **Mobile app analysis**: Download the target's mobile applications from app stores and analyze with `apktool` (Android) or `frida` for hardcoded URLs, API endpoints, and embedded credentials
+
+## Key Concepts
+
+| Term | Definition |
+|------|------------|
+| **OSINT** | Open Source Intelligence; intelligence collected from publicly available sources including websites, social media, public records, and government data |
+| **Passive Reconnaissance** | Information gathering without directly interacting with target systems, leaving no footprint in target logs |
+| **Active Reconnaissance** | Information gathering that involves direct interaction with target systems (scanning, probing) and may be logged |
+| **Certificate Transparency** | Public logs of TLS certificates issued by certificate authorities, queryable to discover subdomains and infrastructure |
+| **Attack Surface** | The sum of all points where an unauthorized user can attempt to enter or extract data from an environment |
+| **Google Dorking** | Using advanced Google search operators to find sensitive information indexed by search engines that was not intended to be public |
+| **Shadow IT** | Technology systems and services deployed by employees or departments without the knowledge or approval of the IT department |
+
+## Tools & Systems
+
+- **Amass (OWASP)**: Comprehensive subdomain enumeration tool that combines passive sources, DNS brute-forcing, and certificate transparency log analysis
+- **Shodan**: Internet-wide scanning database that indexes services, banners, and metadata for internet-connected devices, searchable by IP, domain, or organization
+- **theHarvester**: OSINT tool for gathering emails, subdomains, hosts, employee names, and open ports from public sources
+- **SpiderFoot**: Automated OSINT collection platform that queries 200+ data sources and correlates findings into a unified graph
+- **Recon-ng**: Modular web reconnaissance framework with a database backend for organizing and cross-referencing discovered intelligence
+
+## Common Scenarios
+
+### Scenario: Pre-Engagement Reconnaissance for a Red Team Exercise
+
+**Context**: A technology company has contracted a red team assessment. Before active testing begins, the team conducts passive OSINT to map the attack surface and identify potential entry points. The target is a SaaS company with 500 employees and a primary domain of techcorp.io.
+
+**Approach**:
+1. Enumerate 147 subdomains via Amass and crt.sh, including staging.techcorp.io, jenkins.techcorp.io, and vpn.techcorp.io
+2. Shodan reveals a forgotten Elasticsearch instance on port 9200 with no authentication exposed to the internet
+3. theHarvester collects 89 employee email addresses, revealing the format first.last@techcorp.io
+4. GitHub search discovers a former developer's public repository containing a `.env` file with AWS access keys
+5. LinkedIn analysis reveals the company uses Okta for SSO, Jira for project management, and AWS for hosting
+6. Google dorking finds a directory listing on docs.techcorp.io exposing internal architecture diagrams
+7. Compile all intelligence into a reconnaissance report that feeds directly into the threat modeling and attack planning phases
+
+**Pitfalls**:
+- Relying on a single subdomain enumeration tool and missing assets found by other tools using different data sources
+- Failing to check cloud storage services (S3, Azure Blob, GCP) for publicly accessible buckets
+- Not searching for credentials in public code repositories, which frequently yield immediate access
+- Conducting active scanning (port scans, vulnerability scans) during what should be a passive-only phase
+
+## Output Format
+
+```
+## External Reconnaissance Report - TechCorp.io
+
+### Attack Surface Summary
+- **Domains discovered**: 3 (techcorp.io, techcorp.com, techcorpapp.com)
+- **Subdomains enumerated**: 147 unique subdomains across all domains
+- **Unique IP addresses**: 34 IPs mapped across AWS us-east-1 and us-west-2
+- **Email addresses collected**: 89 valid corporate email addresses
+- **Exposed services**: 12 internet-facing services identified via Shodan/Censys
+
+### Critical Findings
+
+**1. Unauthenticated Elasticsearch Instance**
+- Host: 52.xx.xx.xx:9200 (elastic.techcorp.io)
+- Indexed data: Application logs containing user session tokens and PII
+- Source: Shodan search "ssl.cert.subject.cn:techcorp.io"
+
+**2. AWS Credentials in Public GitHub Repository**
+- Repository: github.com/former-dev/techcorp-scripts
+- File: .env containing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+- Status: Keys appear active (not tested - out of scope for passive recon)
+
+**3. Directory Listing Exposing Internal Documents**
+- URL: https://docs.techcorp.io/internal/
+- Contents: Architecture diagrams, network topology, runbooks
+- Source: Google dork "site:techcorp.io intitle:index.of"
+
+### Recommendations
+1. Immediately rotate the exposed AWS credentials and audit CloudTrail logs
+2. Restrict Elasticsearch access to internal networks or add authentication
+3. Disable directory listings on docs.techcorp.io and audit all web servers
+4. Implement GitHub secret scanning across all organization repositories
+```
+
+##### END FILE #####
+
+##### FILE: conducting-external-reconnaissance-with-osint/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: conducting-external-reconnaissance-with-osint/references/api-reference.md #####
+# API Reference: External Reconnaissance OSINT Agent
+
+## Overview
+
+Maps an organization's external attack surface using passive OSINT: certificate transparency, DNS records, Shodan, email security checks, web technology fingerprinting, and GitHub leak detection. For authorized assessments only.
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| shodan | >=1.28 | Shodan API for host discovery |
+| requests | >=2.28 | HTTP API calls |
+
+## CLI Usage
+
+```bash
+python agent.py --domain example.com --org "Example Corp" --shodan-key <key> \
+  --github-token <token> --output recon.json
+```
+
+## Key Functions
+
+### `enumerate_subdomains_crtsh(domain)`
+Discovers subdomains from certificate transparency logs via crt.sh JSON API.
+
+### `enumerate_dns_records(domain)`
+Queries A, AAAA, MX, NS, TXT, CNAME, SOA records using Google DNS-over-HTTPS API.
+
+### `shodan_org_search(api_key, org_name, max_results)`
+Searches Shodan for hosts belonging to a named organization.
+
+### `check_email_security(domain)`
+Checks for SPF and DMARC DNS records to assess email security posture.
+
+### `check_web_technologies(domain)`
+Identifies web server technologies from HTTP response headers (Server, X-Powered-By).
+
+### `search_github_leaks(domain, github_token)`
+Searches GitHub code for leaked passwords, API keys, and secrets related to the target.
+
+### `generate_recon_report(...)`
+Consolidates all OSINT findings into a structured JSON report.
+
+## External APIs Used
+
+| API | Endpoint | Auth | Purpose |
+|-----|----------|------|---------|
+| crt.sh | `https://crt.sh/?q=...&output=json` | None | Certificate transparency |
+| Google DNS | `https://dns.google/resolve` | None | DNS record lookup |
+| Shodan | `api.shodan.io` | API key | Host/service discovery |
+| GitHub | `https://api.github.com/search/code` | Token | Code leak search |
+
+##### END FILE #####
+
+##### FILE: conducting-external-reconnaissance-with-osint/scripts/agent.py #####
+#!/usr/bin/env python3
+# For authorized penetration testing and lab environments only
+"""External Reconnaissance Agent - Maps organization attack surface using passive OSINT."""
+
+import json
+import logging
+import argparse
+from datetime import datetime
+
+import requests
+import shodan
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def enumerate_subdomains_crtsh(domain):
+    """Discover subdomains via certificate transparency logs."""
+    url = f"https://crt.sh/?q=%.{domain}&output=json"
+    resp = requests.get(url, timeout=60)
+    subdomains = set()
+    if resp.status_code == 200:
+        for entry in resp.json():
+            for name in entry.get("name_value", "").split("\n"):
+                name = name.strip().lower()
+                if name and "*" not in name and domain in name:
+                    subdomains.add(name)
+    logger.info("crt.sh: %d subdomains for %s", len(subdomains), domain)
+    return sorted(subdomains)
+
+
+def enumerate_dns_records(domain):
+    """Query public DNS records for a domain using DNS-over-HTTPS."""
+    record_types = ["A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA"]
+    records = {}
+    for rtype in record_types:
+        url = f"https://dns.google/resolve?name={domain}&type={rtype}"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            answers = data.get("Answer", [])
+            if answers:
+                records[rtype] = [a.get("data", "") for a in answers]
+    logger.info("DNS records collected for %s: %s", domain, list(records.keys()))
+    return records
+
+
+def shodan_org_search(api_key, org_name, max_results=50):
+    """Search Shodan for hosts belonging to an organization."""
+    api = shodan.Shodan(api_key)
+    results = api.search(f'org:"{org_name}"', limit=max_results)
+    hosts = []
+    for match in results["matches"]:
+        hosts.append({
+            "ip": match["ip_str"],
+            "port": match["port"],
+            "product": match.get("product", ""),
+            "version": match.get("version", ""),
+            "os": match.get("os", ""),
+            "hostnames": match.get("hostnames", []),
+        })
+    logger.info("Shodan: %d hosts for org '%s'", len(hosts), org_name)
+    return hosts
+
+
+def check_email_security(domain):
+    """Check SPF, DKIM, and DMARC records for email security posture."""
+    email_security = {}
+    for prefix, rtype in [("", "TXT"), ("_dmarc.", "TXT")]:
+        url = f"https://dns.google/resolve?name={prefix}{domain}&type={rtype}"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            answers = resp.json().get("Answer", [])
+            for a in answers:
+                data = a.get("data", "")
+                if "v=spf1" in data:
+                    email_security["spf"] = data
+                elif "v=DMARC1" in data:
+                    email_security["dmarc"] = data
+    email_security["spf_present"] = "spf" in email_security
+    email_security["dmarc_present"] = "dmarc" in email_security
+    logger.info("Email security for %s: SPF=%s DMARC=%s",
+                domain, email_security["spf_present"], email_security["dmarc_present"])
+    return email_security
+
+
+def search_breach_data(account, api_key):
+    """Search Have I Been Pwned v3 for breaches affecting an account.
+
+    Requires a paid HIBP API key passed in the `hibp-api-key` header. The v3
+    breachedaccount endpoint returns 200 with a breach list, 404 when the
+    account has no breaches, 401 for a missing/invalid key, and 429 on rate
+    limiting (Retry-After header indicates the back-off in seconds).
+    """
+    if not api_key:
+        logger.warning("HIBP API key not provided; skipping breach lookup")
+        return []
+    url = f"https://haveibeenpwned.com/api/v3/breachedaccount/{account}"
+    headers = {"hibp-api-key": api_key, "user-agent": "OSINT-Recon-Agent"}
+    params = {"truncateResponse": "false"}
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=15)
+        if resp.status_code == 200:
+            breaches = resp.json()
+            logger.info("HIBP: %d breach(es) for %s", len(breaches), account)
+            return breaches
+        if resp.status_code == 404:
+            logger.info("HIBP: no breaches found for %s", account)
+            return []
+        if resp.status_code == 401:
+            logger.error("HIBP: unauthorized - invalid or missing API key")
+        elif resp.status_code == 429:
+            logger.error("HIBP: rate limited, retry after %s seconds",
+                         resp.headers.get("Retry-After", "unknown"))
+        else:
+            logger.error("HIBP: unexpected status %d", resp.status_code)
+    except requests.RequestException as e:
+        logger.error("HIBP request failed: %s", e)
+    return []
+
+
+def check_web_technologies(domain):
+    """Identify web technologies via HTTP response headers."""
+    technologies = {}
+    try:
+        resp = requests.get(f"https://{domain}", timeout=10, allow_redirects=True, verify=False)
+        headers = resp.headers
+        tech_headers = {
+            "Server": headers.get("Server", ""),
+            "X-Powered-By": headers.get("X-Powered-By", ""),
+            "X-AspNet-Version": headers.get("X-AspNet-Version", ""),
+            "X-Generator": headers.get("X-Generator", ""),
+        }
+        technologies = {k: v for k, v in tech_headers.items() if v}
+        technologies["status_code"] = resp.status_code
+        technologies["final_url"] = resp.url
+    except requests.RequestException as e:
+        technologies["error"] = str(e)
+    return technologies
+
+
+def search_github_leaks(domain, github_token=None):
+    """Search GitHub for leaked credentials related to the target domain."""
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+    queries = [f'"{domain}" password', f'"{domain}" api_key', f'"{domain}" secret']
+    all_results = []
+    for query in queries:
+        resp = requests.get(
+            "https://api.github.com/search/code",
+            headers=headers, params={"q": query, "per_page": 10}, timeout=15
+        )
+        if resp.status_code == 200:
+            items = resp.json().get("items", [])
+            for item in items:
+                all_results.append({
+                    "repo": item["repository"]["full_name"],
+                    "path": item["path"],
+                    "url": item["html_url"],
+                    "query": query,
+                })
+    logger.info("GitHub: %d potential leaks for %s", len(all_results), domain)
+    return all_results
+
+
+def generate_recon_report(domain, subdomains, dns, shodan_hosts, email_sec,
+                          technologies, github_leaks, breaches):
+    """Generate external reconnaissance report."""
+    report = {
+        "target": domain,
+        "timestamp": datetime.utcnow().isoformat(),
+        "subdomains": {"count": len(subdomains), "list": subdomains},
+        "dns_records": dns,
+        "shodan_hosts": {"count": len(shodan_hosts), "hosts": shodan_hosts},
+        "email_security": email_sec,
+        "web_technologies": technologies,
+        "github_leaks": github_leaks,
+        "breaches": {"count": len(breaches), "list": breaches},
+    }
+    print(f"RECON REPORT - {domain}")
+    print(f"Subdomains: {len(subdomains)}, Shodan hosts: {len(shodan_hosts)}, "
+          f"GitHub leaks: {len(github_leaks)}, Breaches: {len(breaches)}")
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description="External Reconnaissance OSINT Agent")
+    parser.add_argument("--domain", required=True, help="Target domain")
+    parser.add_argument("--org", help="Organization name for Shodan search")
+    parser.add_argument("--shodan-key", help="Shodan API key")
+    parser.add_argument("--github-token", help="GitHub token for code search")
+    parser.add_argument("--hibp-key", help="Have I Been Pwned API key "
+                        "(falls back to HIBP_API_KEY env var)")
+    parser.add_argument("--breach-account", help="Account/email to check "
+                        "against Have I Been Pwned breaches")
+    parser.add_argument("--output", default="recon_report.json")
+    args = parser.parse_args()
+
+    subdomains = enumerate_subdomains_crtsh(args.domain)
+    dns = enumerate_dns_records(args.domain)
+    email_sec = check_email_security(args.domain)
+    technologies = check_web_technologies(args.domain)
+
+    shodan_hosts = []
+    if args.shodan_key and args.org:
+        shodan_hosts = shodan_org_search(args.shodan_key, args.org)
+
+    github_leaks = search_github_leaks(args.domain, args.github_token) if args.github_token else []
+
+    breaches = []
+    if args.breach_account:
+        hibp_key = args.hibp_key or os.environ.get("HIBP_API_KEY")
+        breaches = search_breach_data(args.breach_account, hibp_key)
+
+    report = generate_recon_report(
+        args.domain, subdomains, dns, shodan_hosts, email_sec,
+        technologies, github_leaks, breaches
+    )
+    with open(args.output, "w") as f:
+        json.dump(report, f, indent=2)
+    logger.info("Recon report saved to %s", args.output)
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+-----
+[END PART 14/14] — هاذ آخر جزء. رد "Received all 14 parts, ready" وصبر لسؤالي.

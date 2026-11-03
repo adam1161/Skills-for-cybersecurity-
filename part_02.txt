@@ -1,0 +1,1269 @@
+[PART 2/14]
+-----
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-dns-enumeration-and-zone-transfer/references/api-reference.md #####
+# API Reference: Performing DNS Enumeration and Zone Transfer
+
+## dnspython Library
+
+| Function/Class | Description |
+|----------------|-------------|
+| `dns.resolver.resolve(domain, rdtype)` | Query DNS records by type |
+| `dns.zone.from_xfr(xfr_response)` | Parse zone transfer response |
+| `dns.query.xfr(nameserver, domain)` | Perform AXFR zone transfer |
+| `dns.rdatatype.to_text(rdtype)` | Convert record type to string |
+| `dns.resolver.Resolver()` | Custom resolver with timeout settings |
+
+## DNS Record Types
+
+| Type | Description |
+|------|-------------|
+| A | IPv4 address record |
+| AAAA | IPv6 address record |
+| MX | Mail exchange server |
+| NS | Authoritative nameserver |
+| TXT | Text record (SPF, DKIM, DMARC) |
+| SOA | Start of Authority |
+| CNAME | Canonical name alias |
+| SRV | Service location record |
+| CAA | Certificate Authority Authorization |
+| AXFR | Full zone transfer request |
+
+## Email Security Records
+
+| Record | Location | Description |
+|--------|----------|-------------|
+| SPF | `domain TXT` | Authorized mail sender IPs |
+| DMARC | `_dmarc.domain TXT` | Email authentication policy |
+| DKIM | `selector._domainkey.domain TXT` | Email signing public key |
+
+## Key Libraries
+
+- **dnspython** (`pip install dnspython`): Full-featured DNS toolkit for Python
+- **python-nmap** (optional): Network port scanning for DNS services
+- **sublist3r** (optional): Subdomain enumeration using search engines
+
+## Configuration
+
+| Variable | Description |
+|----------|-------------|
+| Target domain | Authorized target domain for enumeration |
+| Resolver timeout | DNS query timeout (default 3 seconds) |
+| Wordlist | Subdomain brute-force dictionary |
+
+## Common Subdomain Wordlists
+
+| Source | Description |
+|--------|-------------|
+| SecLists DNS | `Discovery/DNS/subdomains-top1million-5000.txt` |
+| Assetnote | Best-DNS-Wordlist from Assetnote |
+| Custom | Industry-specific subdomain patterns |
+
+## References
+
+- [dnspython Documentation](https://dnspython.readthedocs.io/)
+- [OWASP DNS Enumeration](https://owasp.org/www-community/attacks/DNS_Enumeration)
+- [SecLists](https://github.com/danielmiessler/SecLists)
+- [Amass OWASP](https://github.com/owasp-amass/amass)
+
+##### END FILE #####
+
+##### FILE: performing-dns-enumeration-and-zone-transfer/scripts/agent.py #####
+#!/usr/bin/env python3
+"""
+DNS Enumeration and Zone Transfer Agent — AUTHORIZED TESTING ONLY
+Performs DNS reconnaissance including record enumeration, zone transfer
+attempts, and subdomain discovery using dnspython.
+
+WARNING: Only use with explicit written authorization for the target domain.
+"""
+
+import json
+import sys
+from datetime import datetime, timezone
+
+import dns.resolver
+import dns.zone
+import dns.query
+import dns.rdatatype
+
+
+def enumerate_dns_records(domain: str) -> dict:
+    """Enumerate common DNS record types for a domain."""
+    record_types = ["A", "AAAA", "MX", "NS", "TXT", "SOA", "CNAME", "SRV", "CAA"]
+    results = {}
+
+    for rtype in record_types:
+        try:
+            answers = dns.resolver.resolve(domain, rtype)
+            records = []
+            for rdata in answers:
+                records.append(str(rdata))
+            results[rtype] = records
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            results[rtype] = []
+        except dns.exception.DNSException:
+            results[rtype] = []
+
+    return results
+
+
+def get_nameservers(domain: str) -> list[str]:
+    """Resolve authoritative nameservers for a domain."""
+    nameservers = []
+    try:
+        ns_records = dns.resolver.resolve(domain, "NS")
+        for ns in ns_records:
+            ns_name = str(ns).rstrip(".")
+            try:
+                a_records = dns.resolver.resolve(ns_name, "A")
+                for a in a_records:
+                    nameservers.append({"name": ns_name, "ip": str(a)})
+            except dns.exception.DNSException:
+                nameservers.append({"name": ns_name, "ip": "unresolved"})
+    except dns.exception.DNSException as e:
+        nameservers.append({"error": str(e)})
+
+    return nameservers
+
+
+def attempt_zone_transfer(domain: str, nameservers: list[dict]) -> dict:
+    """Attempt AXFR zone transfer against each nameserver."""
+    results = {"vulnerable": False, "records": [], "tested_servers": []}
+
+    for ns in nameservers:
+        ns_ip = ns.get("ip", "")
+        ns_name = ns.get("name", "")
+        if ns_ip == "unresolved" or "error" in ns:
+            continue
+
+        server_result = {"nameserver": ns_name, "ip": ns_ip, "transfer_allowed": False}
+
+        try:
+            zone = dns.zone.from_xfr(dns.query.xfr(ns_ip, domain, timeout=10))
+            server_result["transfer_allowed"] = True
+            results["vulnerable"] = True
+
+            for name, node in zone.nodes.items():
+                for rdataset in node.rdatasets:
+                    for rdata in rdataset:
+                        results["records"].append({
+                            "name": str(name),
+                            "type": dns.rdatatype.to_text(rdataset.rdtype),
+                            "ttl": rdataset.ttl,
+                            "data": str(rdata),
+                        })
+
+        except dns.exception.FormError:
+            server_result["error"] = "Transfer refused (FORMERR)"
+        except dns.xfr.TransferError:
+            server_result["error"] = "Transfer refused"
+        except dns.exception.DNSException as e:
+            server_result["error"] = str(e)
+        except Exception as e:
+            server_result["error"] = str(e)
+
+        results["tested_servers"].append(server_result)
+
+    return results
+
+
+def check_email_security(domain: str) -> dict:
+    """Check SPF, DKIM, and DMARC DNS records."""
+    security = {"spf": None, "dmarc": None, "dkim_selectors": []}
+
+    try:
+        txt_records = dns.resolver.resolve(domain, "TXT")
+        for txt in txt_records:
+            txt_str = str(txt).strip('"')
+            if txt_str.startswith("v=spf1"):
+                security["spf"] = txt_str
+    except dns.exception.DNSException:
+        pass
+
+    try:
+        dmarc = dns.resolver.resolve(f"_dmarc.{domain}", "TXT")
+        for txt in dmarc:
+            txt_str = str(txt).strip('"')
+            if "v=DMARC1" in txt_str:
+                security["dmarc"] = txt_str
+    except dns.exception.DNSException:
+        pass
+
+    common_selectors = ["default", "google", "selector1", "selector2", "s1", "s2", "mail", "k1"]
+    for selector in common_selectors:
+        try:
+            dkim = dns.resolver.resolve(f"{selector}._domainkey.{domain}", "TXT")
+            for txt in dkim:
+                security["dkim_selectors"].append({
+                    "selector": selector,
+                    "record": str(txt).strip('"')[:100],
+                })
+        except dns.exception.DNSException:
+            pass
+
+    return security
+
+
+def brute_force_subdomains(domain: str, wordlist: list[str] = None) -> list[dict]:
+    """Brute-force subdomain discovery via DNS resolution."""
+    if wordlist is None:
+        wordlist = [
+            "www", "mail", "ftp", "admin", "api", "dev", "staging",
+            "test", "vpn", "portal", "app", "login", "secure",
+            "m", "blog", "shop", "cdn", "ns1", "ns2", "mx",
+            "remote", "gateway", "intranet", "extranet", "webmail",
+            "owa", "autodiscover", "sso", "auth", "git", "ci",
+        ]
+
+    found = []
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 3
+    resolver.lifetime = 3
+
+    for sub in wordlist:
+        fqdn = f"{sub}.{domain}"
+        try:
+            answers = resolver.resolve(fqdn, "A")
+            ips = [str(a) for a in answers]
+            found.append({"subdomain": fqdn, "ips": ips, "record_type": "A"})
+        except dns.exception.DNSException:
+            pass
+
+        try:
+            answers = resolver.resolve(fqdn, "CNAME")
+            cnames = [str(c) for c in answers]
+            found.append({"subdomain": fqdn, "cnames": cnames, "record_type": "CNAME"})
+        except dns.exception.DNSException:
+            pass
+
+    return found
+
+
+def generate_report(
+    domain: str, records: dict, nameservers: list, zone_transfer: dict,
+    email_security: dict, subdomains: list,
+) -> str:
+    """Generate DNS enumeration report."""
+    lines = [
+        "DNS ENUMERATION AND ZONE TRANSFER REPORT — AUTHORIZED TESTING ONLY",
+        "=" * 65,
+        f"Target Domain: {domain}",
+        f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "",
+        "DNS RECORDS:",
+    ]
+    for rtype, recs in records.items():
+        if recs:
+            lines.append(f"  {rtype}: {', '.join(recs[:5])}")
+
+    lines.extend([
+        "",
+        f"NAMESERVERS ({len(nameservers)}):",
+    ])
+    for ns in nameservers:
+        if "error" not in ns:
+            lines.append(f"  {ns['name']} ({ns['ip']})")
+
+    vuln = "VULNERABLE" if zone_transfer["vulnerable"] else "NOT VULNERABLE"
+    lines.extend([
+        "",
+        f"ZONE TRANSFER: {vuln}",
+        f"  Records Leaked: {len(zone_transfer['records'])}",
+    ])
+
+    lines.extend([
+        "",
+        "EMAIL SECURITY:",
+        f"  SPF: {'Present' if email_security['spf'] else 'MISSING'}",
+        f"  DMARC: {'Present' if email_security['dmarc'] else 'MISSING'}",
+        f"  DKIM Selectors Found: {len(email_security['dkim_selectors'])}",
+        "",
+        f"SUBDOMAINS DISCOVERED: {len(subdomains)}",
+    ])
+    for sub in subdomains[:15]:
+        ips = sub.get("ips", sub.get("cnames", []))
+        lines.append(f"  {sub['subdomain']} -> {', '.join(ips)}")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print("[!] DNS ENUMERATION — AUTHORIZED TESTING ONLY\n")
+
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <target_domain>")
+        sys.exit(1)
+
+    domain = sys.argv[1]
+
+    print(f"[*] Enumerating DNS records for {domain}...")
+    records = enumerate_dns_records(domain)
+
+    print("[*] Resolving nameservers...")
+    nameservers = get_nameservers(domain)
+
+    print("[*] Attempting zone transfer...")
+    zone_transfer = attempt_zone_transfer(domain, nameservers)
+
+    print("[*] Checking email security records...")
+    email_security = check_email_security(domain)
+
+    print("[*] Brute-forcing subdomains...")
+    subdomains = brute_force_subdomains(domain)
+
+    report = generate_report(domain, records, nameservers, zone_transfer, email_security, subdomains)
+    print(report)
+
+    output = f"dns_enum_{domain.replace('.', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.json"
+    with open(output, "w") as f:
+        json.dump({"records": records, "nameservers": nameservers, "zone_transfer": zone_transfer,
+                    "email_security": email_security, "subdomains": subdomains}, f, indent=2)
+    print(f"\n[*] Results saved to {output}")
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/SKILL.md #####
+---
+name: performing-subdomain-enumeration-with-subfinder
+description: Enumerate subdomains of target domains using ProjectDiscovery's Subfinder
+  passive reconnaissance tool to map the attack surface during security assessments.
+domain: cybersecurity
+subdomain: web-application-security
+tags:
+- subdomain-enumeration
+- reconnaissance
+- bug-bounty
+- attack-surface
+- subfinder
+- passive-recon
+- osint
+version: '1.0'
+author: mahipal
+license: Apache-2.0
+nist_csf:
+- PR.PS-01
+- ID.RA-01
+- PR.DS-10
+- DE.CM-01
+mitre_attack:
+- T1190
+- T1059.007
+- T1505.003
+- T1083
+- T1595
+---
+
+# Performing Subdomain Enumeration with Subfinder
+
+## When to Use
+- During the reconnaissance phase of penetration testing or bug bounty hunting
+- When mapping the external attack surface of a target organization
+- Before performing vulnerability scanning on discovered subdomains
+- When building an asset inventory for continuous security monitoring
+- During red team engagements requiring passive information gathering
+
+## Prerequisites
+- Go 1.21+ installed for building from source
+- Subfinder v2 installed (`go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest`)
+- API keys configured for passive sources (Shodan, Censys, VirusTotal, SecurityTrails, Chaos)
+- Provider configuration file at `$HOME/.config/subfinder/provider-config.yaml`
+- Network access to passive DNS and certificate transparency sources
+- httpx or httprobe for validating discovered subdomains
+
+## Workflow
+
+### Step 1 — Install and Configure Subfinder
+```bash
+# Install subfinder
+go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+
+# Verify installation
+subfinder -version
+
+# Configure API keys for enhanced results
+mkdir -p $HOME/.config/subfinder
+cat > $HOME/.config/subfinder/provider-config.yaml << 'EOF'
+shodan:
+  - YOUR_SHODAN_API_KEY
+censys:
+  - YOUR_CENSYS_API_ID:YOUR_CENSYS_API_SECRET
+virustotal:
+  - YOUR_VT_API_KEY
+securitytrails:
+  - YOUR_ST_API_KEY
+chaos:
+  - YOUR_CHAOS_API_KEY
+EOF
+```
+
+### Step 2 — Run Basic Subdomain Enumeration
+```bash
+# Single domain enumeration
+subfinder -d example.com -o subdomains.txt
+
+# Multiple domains from a file
+subfinder -dL domains.txt -o all_subdomains.txt
+
+# Use all passive sources (slower but more thorough)
+subfinder -d example.com -all -o subdomains_all.txt
+
+# Silent mode for piping to other tools
+subfinder -d example.com -silent | httpx -silent -status-code
+```
+
+### Step 3 — Filter and Customize Source Selection
+```bash
+# Use specific sources only
+subfinder -d example.com -s crtsh,virustotal,shodan -o filtered.txt
+
+# Exclude specific sources
+subfinder -d example.com -es github -o results.txt
+
+# Enable recursive subdomain enumeration
+subfinder -d example.com -recursive -o recursive_subs.txt
+
+# Match specific patterns
+subfinder -d example.com -m "api,dev,staging" -o matched.txt
+```
+
+### Step 4 — Control Rate Limiting and Output Format
+```bash
+# Rate limit to avoid API throttling
+subfinder -d example.com -rate-limit 10 -t 5 -o rate_limited.txt
+
+# JSON output for programmatic processing
+subfinder -d example.com -oJ -o subdomains.json
+
+# Output with source information
+subfinder -d example.com -cs -o subdomains_with_sources.txt
+
+# Collect results in a directory per domain
+subfinder -dL domains.txt -oD ./results/
+```
+
+### Step 5 — Validate Discovered Subdomains with httpx
+```bash
+# Pipe subfinder output to httpx for live validation
+subfinder -d example.com -silent | httpx -silent -status-code -title -tech-detect -o live_hosts.txt
+
+# Check for specific ports
+subfinder -d example.com -silent | httpx -ports 80,443,8080,8443 -o web_services.txt
+
+# Resolve IP addresses
+subfinder -d example.com -silent | dnsx -a -resp -o resolved.txt
+```
+
+### Step 6 — Integrate with Broader Recon Pipeline
+```bash
+# Chain with nuclei for vulnerability scanning
+subfinder -d example.com -silent | httpx -silent | nuclei -t cves/ -o vulns.txt
+
+# Combine with amass for comprehensive enumeration
+subfinder -d example.com -o subfinder_results.txt
+amass enum -passive -d example.com -o amass_results.txt
+cat subfinder_results.txt amass_results.txt | sort -u > combined_subdomains.txt
+
+# Screenshot discovered hosts
+subfinder -d example.com -silent | httpx -silent | gowitness file -f - -P screenshots/
+```
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| Passive Enumeration | Discovering subdomains without directly querying target DNS servers |
+| Certificate Transparency | Public logs of SSL/TLS certificates revealing subdomain names |
+| DNS Aggregation | Collecting subdomain data from multiple passive DNS databases |
+| Recursive Enumeration | Discovering subdomains of subdomains for deeper coverage |
+| Source Providers | External APIs and databases queried for subdomain intelligence |
+| CNAME Records | Canonical name records that may reveal additional infrastructure |
+| Wildcard DNS | DNS configuration returning results for any subdomain query |
+
+## Tools & Systems
+
+| Tool | Purpose |
+|------|---------|
+| Subfinder | Primary passive subdomain enumeration engine |
+| httpx | HTTP probe tool for validating live subdomains |
+| dnsx | DNS resolution and validation toolkit |
+| Nuclei | Template-based vulnerability scanner for discovered hosts |
+| Amass | Complementary subdomain enumeration with active/passive modes |
+| gowitness | Web screenshot utility for visual reconnaissance |
+| Shodan | Internet-wide scanning database for subdomain intelligence |
+| crt.sh | Certificate transparency log search engine |
+
+## Common Scenarios
+
+1. **Bug Bounty Reconnaissance** — Enumerate all subdomains of a target program scope to identify forgotten or misconfigured assets that may contain vulnerabilities
+2. **Attack Surface Mapping** — Build a comprehensive inventory of externally accessible subdomains for ongoing security monitoring and risk assessment
+3. **Cloud Asset Discovery** — Identify subdomains pointing to cloud services (AWS, Azure, GCP) that may be vulnerable to subdomain takeover
+4. **CI/CD Integration** — Automate subdomain monitoring in pipelines to detect new subdomains and alert on changes to the attack surface
+5. **Merger & Acquisition Due Diligence** — Map the complete external footprint of an acquisition target during security assessment
+
+## Output Format
+
+```
+## Subdomain Enumeration Report
+- **Target Domain**: example.com
+- **Total Subdomains Found**: 247
+- **Live Hosts**: 183
+- **Unique IP Addresses**: 42
+- **Sources Used**: crt.sh, VirusTotal, Shodan, SecurityTrails, Censys
+
+### Discovered Subdomains
+| Subdomain | IP Address | Status Code | Technology |
+|-----------|-----------|-------------|------------|
+| api.example.com | 10.0.1.5 | 200 | Nginx, Node.js |
+| staging.example.com | 10.0.2.10 | 403 | Apache |
+| dev.example.com | 10.0.3.15 | 200 | Express |
+
+### Recommendations
+- Remove DNS records for decommissioned subdomains
+- Investigate subdomains with CNAME pointing to unclaimed services
+- Restrict access to development and staging environments
+```
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/LICENSE #####
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to the Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by the Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding any notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. Please do not remove or change
+      the license header comment from a contributed file except when
+      necessary.
+
+   Copyright 2026 mukul975
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/assets/template.md #####
+# Subdomain Enumeration Report Template
+
+## Engagement Details
+- **Target Domain**: [domain]
+- **Date**: [date]
+- **Assessor**: [name]
+- **Scope**: Passive subdomain enumeration only
+
+## Executive Summary
+Performed passive subdomain enumeration against [domain] using Subfinder and complementary tools. Discovered [N] unique subdomains, of which [M] are live and responding to HTTP requests.
+
+## Methodology
+1. Passive subdomain enumeration using Subfinder with all available sources
+2. DNS resolution and validation using dnsx
+3. HTTP probing with httpx for live host identification
+4. CNAME analysis for subdomain takeover risk assessment
+
+## Results Summary
+
+| Metric | Count |
+|--------|-------|
+| Total Subdomains Discovered | |
+| Live HTTP Hosts | |
+| Unique IP Addresses | |
+| Subdomain Takeover Candidates | |
+| Cloud-Hosted Subdomains | |
+
+## Live Hosts
+
+| Subdomain | IP Address | Status Code | Title | Technologies |
+|-----------|-----------|-------------|-------|-------------|
+| | | | | |
+
+## Subdomain Takeover Risks
+
+| Subdomain | CNAME Target | Service | Risk Level |
+|-----------|-------------|---------|------------|
+| | | | |
+
+## Recommendations
+1. Remove dangling DNS records for decommissioned services
+2. Claim or remove CNAME records pointing to unclaimed cloud resources
+3. Restrict access to development and staging subdomains
+4. Implement continuous subdomain monitoring for new asset detection
+5. Review cloud service configurations for publicly accessible resources
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/references/api-reference.md #####
+# API Reference: Subdomain Enumeration with Subfinder
+
+## Subfinder CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `-d <domain>` | Target domain to enumerate |
+| `-dL <file>` | File containing list of domains |
+| `-o <file>` | Output file for results |
+| `-oJ` | JSON lines output format |
+| `-oD <dir>` | Output directory (one file per domain) |
+| `-all` | Use all passive sources (slower, more thorough) |
+| `-silent` | Show only subdomains in output |
+| `-recursive` | Enumerate subdomains of discovered subdomains |
+| `-s <src1,src2>` | Use only specified sources |
+| `-es <src>` | Exclude specific sources |
+| `-cs` | Show source for each subdomain |
+| `-rate-limit <n>` | Max requests per second |
+| `-t <n>` | Number of concurrent threads |
+
+## httpx CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `-l <file>` | Input file with hosts |
+| `-ports <p1,p2>` | Ports to probe |
+| `-status-code` | Show HTTP status code |
+| `-title` | Show page title |
+| `-tech-detect` | Detect web technologies |
+| `-json` | JSON output format |
+| `-silent` | Suppress banner |
+
+## dnsx CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `-l <file>` | Input file with hosts |
+| `-a` | Resolve A records |
+| `-cname` | Resolve CNAME records |
+| `-resp` | Show response data |
+| `-json` | JSON output |
+
+## Passive Sources
+
+| Source | API Key Required |
+|--------|-----------------|
+| crt.sh | No |
+| VirusTotal | Yes |
+| Shodan | Yes |
+| SecurityTrails | Yes |
+| Censys | Yes |
+| Chaos (ProjectDiscovery) | Yes |
+| AlienVault OTX | No |
+| HackerTarget | No |
+
+## Python Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `subprocess` | stdlib | Execute subfinder, httpx, dnsx CLI |
+| `json` | stdlib | Parse JSON lines output |
+| `pathlib` | stdlib | File path management |
+
+## References
+
+- Subfinder GitHub: https://github.com/projectdiscovery/subfinder
+- httpx GitHub: https://github.com/projectdiscovery/httpx
+- dnsx GitHub: https://github.com/projectdiscovery/dnsx
+- Subfinder Config: https://docs.projectdiscovery.io/tools/subfinder/install
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/references/standards.md #####
+# Standards & References — Subdomain Enumeration with Subfinder
+
+## Industry Standards
+- **OWASP Testing Guide v4.2** — OTG-INFO-004: Enumerate applications on web server through subdomain discovery
+- **PTES (Penetration Testing Execution Standard)** — Intelligence Gathering phase requiring comprehensive asset enumeration
+- **NIST SP 800-115** — Technical Guide to Information Security Testing and Assessment, passive reconnaissance methods
+- **MITRE ATT&CK T1596** — Search Open Technical Databases for target infrastructure information
+
+## Tool References
+- Subfinder GitHub: https://github.com/projectdiscovery/subfinder
+- ProjectDiscovery Documentation: https://docs.projectdiscovery.io/tools/subfinder/overview
+- Certificate Transparency RFC 6962: https://www.rfc-editor.org/rfc/rfc6962
+- crt.sh Certificate Search: https://crt.sh/
+
+## API Provider Documentation
+- Shodan API: https://developer.shodan.io/api
+- Censys Search API: https://search.censys.io/api
+- VirusTotal API v3: https://docs.virustotal.com/reference/overview
+- SecurityTrails API: https://docs.securitytrails.com/reference
+- Chaos ProjectDiscovery: https://chaos.projectdiscovery.io/
+
+## Regulatory Considerations
+- Passive subdomain enumeration does not involve active scanning and is generally legal
+- Always verify scope and authorization before proceeding to active enumeration
+- Bug bounty programs define specific scope for subdomain testing
+- GDPR may apply when collecting data that reveals organizational structure
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/references/workflows.md #####
+# Workflows — Subdomain Enumeration with Subfinder
+
+## Standard Enumeration Workflow
+1. Configure API keys in provider-config.yaml for maximum source coverage
+2. Run subfinder with `-all` flag against target domain(s)
+3. Deduplicate results and remove out-of-scope entries
+4. Validate live hosts with httpx including status codes and technologies
+5. Resolve DNS records with dnsx to map IP infrastructure
+6. Screenshot live hosts with gowitness for visual review
+7. Feed live hosts into vulnerability scanner (nuclei) for automated checks
+
+## Continuous Monitoring Workflow
+1. Schedule subfinder runs via cron (daily or weekly)
+2. Compare new results against baseline subdomain list
+3. Alert on newly discovered subdomains via webhook or email
+4. Automatically scan new subdomains for known vulnerabilities
+5. Update asset inventory with new discoveries
+
+## Bug Bounty Recon Pipeline
+1. Collect target domains from bug bounty program scope
+2. Run subfinder + amass + findomain for maximum coverage
+3. Merge and deduplicate all results
+4. Filter results to in-scope assets only
+5. Probe for live HTTP services with httpx
+6. Run nuclei templates for quick wins
+7. Manually investigate interesting subdomains (dev, staging, api, admin)
+
+## Integration Commands
+```bash
+# Full pipeline example
+subfinder -d target.com -all -silent | \
+  httpx -silent -status-code -title -tech-detect | \
+  tee live_hosts.txt | \
+  nuclei -t cves/ -t exposures/ -t misconfigurations/ -o findings.txt
+
+# Delta monitoring
+subfinder -d target.com -silent > today_subs.txt
+comm -13 <(sort baseline_subs.txt) <(sort today_subs.txt) > new_subs.txt
+```
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/scripts/agent.py #####
+#!/usr/bin/env python3
+"""Agent for subdomain enumeration using subfinder and httpx.
+
+Runs ProjectDiscovery subfinder for passive subdomain discovery,
+validates live hosts with httpx, resolves DNS, and generates
+an attack surface report.
+"""
+
+import subprocess
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+from collections import defaultdict
+
+
+class SubdomainEnumerationAgent:
+    """Enumerates subdomains using subfinder and validates with httpx."""
+
+    def __init__(self, domain, output_dir="./recon"):
+        self.domain = domain
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.subdomains = []
+        self.live_hosts = []
+
+    def run_subfinder(self, all_sources=False, recursive=False):
+        """Run subfinder for passive subdomain enumeration."""
+        out_file = self.output_dir / f"{self.domain}_subdomains.txt"
+        cmd = ["subfinder", "-d", self.domain, "-o", str(out_file), "-silent"]
+        if all_sources:
+            cmd.append("-all")
+        if recursive:
+            cmd.append("-recursive")
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if out_file.exists():
+                self.subdomains = [
+                    line.strip() for line in out_file.read_text().splitlines()
+                    if line.strip()
+                ]
+            return {"count": len(self.subdomains),
+                    "output_file": str(out_file),
+                    "stderr": result.stderr[:200] if result.stderr else ""}
+        except FileNotFoundError:
+            return {"error": "subfinder not installed. Install: go install -v "
+                    "github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"}
+        except subprocess.TimeoutExpired:
+            return {"error": "subfinder timed out after 300s"}
+
+    def run_subfinder_json(self):
+        """Run subfinder with JSON output for source tracking."""
+        cmd = ["subfinder", "-d", self.domain, "-oJ", "-silent"]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            entries = []
+            for line in result.stdout.strip().splitlines():
+                try:
+                    entry = json.loads(line)
+                    entries.append(entry)
+                    host = entry.get("host", "")
+                    if host and host not in self.subdomains:
+                        self.subdomains.append(host)
+                except json.JSONDecodeError:
+                    continue
+            return entries
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return []
+
+    def validate_with_httpx(self, ports="80,443"):
+        """Validate discovered subdomains with httpx probe."""
+        if not self.subdomains:
+            return []
+
+        input_file = self.output_dir / f"{self.domain}_to_probe.txt"
+        input_file.write_text("\n".join(self.subdomains))
+        out_file = self.output_dir / f"{self.domain}_live.json"
+
+        cmd = ["httpx", "-l", str(input_file), "-ports", ports,
+               "-status-code", "-title", "-json", "-o", str(out_file), "-silent"]
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            if out_file.exists():
+                for line in out_file.read_text().splitlines():
+                    try:
+                        self.live_hosts.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+            return self.live_hosts
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return []
+
+    def resolve_dns(self):
+        """Resolve subdomains to IP addresses using dnsx."""
+        if not self.subdomains:
+            return []
+        input_file = self.output_dir / f"{self.domain}_to_resolve.txt"
+        input_file.write_text("\n".join(self.subdomains))
+        cmd = ["dnsx", "-l", str(input_file), "-a", "-resp", "-json", "-silent"]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            records = []
+            for line in result.stdout.strip().splitlines():
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+            return records
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return []
+
+    def detect_takeover_candidates(self):
+        """Identify subdomains potentially vulnerable to takeover."""
+        candidates = []
+        cloud_cnames = ["amazonaws.com", "azurewebsites.net", "cloudfront.net",
+                        "herokuapp.com", "github.io", "s3.amazonaws.com",
+                        "blob.core.windows.net", "cloudapp.azure.com"]
+        dns_records = self.resolve_dns()
+        for record in dns_records:
+            cname = record.get("cname", "")
+            if any(cloud in cname for cloud in cloud_cnames):
+                candidates.append({
+                    "subdomain": record.get("host", ""),
+                    "cname": cname,
+                    "risk": "Potential subdomain takeover"
+                })
+        return candidates
+
+    def generate_report(self):
+        """Generate attack surface enumeration report."""
+        status_dist = defaultdict(int)
+        for host in self.live_hosts:
+            code = host.get("status_code", 0)
+            status_dist[str(code)] += 1
+
+        report = {
+            "domain": self.domain,
+            "report_date": datetime.utcnow().isoformat(),
+            "total_subdomains": len(self.subdomains),
+            "live_hosts": len(self.live_hosts),
+            "status_distribution": dict(status_dist),
+            "subdomains": self.subdomains[:100],
+            "live_host_details": self.live_hosts[:50],
+            "takeover_candidates": self.detect_takeover_candidates(),
+        }
+
+        report_path = self.output_dir / f"{self.domain}_report.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2)
+        print(json.dumps(report, indent=2))
+        return report
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: agent.py <domain> [output_dir]")
+        sys.exit(1)
+    domain = sys.argv[1]
+    output_dir = sys.argv[2] if len(sys.argv) > 2 else "./recon"
+    agent = SubdomainEnumerationAgent(domain, output_dir)
+    agent.run_subfinder(all_sources=True)
+    agent.validate_with_httpx()
+    agent.generate_report()
+
+
+if __name__ == "__main__":
+    main()
+
+##### END FILE #####
+
+##### FILE: performing-subdomain-enumeration-with-subfinder/scripts/process.py #####
+#!/usr/bin/env python3
+"""
+Subdomain Enumeration Pipeline with Subfinder
+Automates subdomain discovery, validation, and reporting.
+"""
+
+import subprocess
+import json
+import csv
+import sys
+import os
+from datetime import datetime
+from pathlib import Path
+
+
+def run_subfinder(domain: str, output_dir: str, use_all_sources: bool = False) -> list:
+    """Run subfinder against a target domain and return discovered subdomains."""
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, f"{domain}_subdomains.txt")
+
+    cmd = ["subfinder", "-d", domain, "-silent"]
+    if use_all_sources:
+        cmd.append("-all")
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    subdomains = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+
+    with open(output_file, "w") as f:
+        f.write("\n".join(subdomains))
+
+    print(f"[+] Found {len(subdomains)} subdomains for {domain}")
+    return subdomains
+
+
+def validate_with_httpx(subdomains: list, output_dir: str) -> list:
+    """Validate discovered subdomains using httpx."""
+    input_data = "\n".join(subdomains)
+    cmd = [
+        "httpx", "-silent", "-status-code", "-title",
+        "-tech-detect", "-json", "-no-color"
+    ]
+
+    result = subprocess.run(
+        cmd, input=input_data, capture_output=True, text=True, timeout=600
+    )
+
+    live_hosts = []
+    for line in result.stdout.strip().split("\n"):
+        if line.strip():
+            try:
+                host_data = json.loads(line)
+                live_hosts.append(host_data)
+            except json.JSONDecodeError:
+                continue
+
+    output_file = os.path.join(output_dir, "live_hosts.json")
+    with open(output_file, "w") as f:
+        json.dump(live_hosts, f, indent=2)
+
+    print(f"[+] Validated {len(live_hosts)} live hosts")
+    return live_hosts
+
+
+def detect_takeover_candidates(subdomains: list) -> list:
+    """Identify subdomains with CNAME records pointing to potentially claimable services."""
+    takeover_services = [
+        "amazonaws.com", "azurewebsites.net", "cloudfront.net",
+        "herokuapp.com", "github.io", "gitlab.io", "pantheon.io",
+        "shopify.com", "surge.sh", "fastly.net", "ghost.io",
+        "myshopify.com", "zendesk.com", "readme.io", "bitbucket.io"
+    ]
+
+    candidates = []
+    for subdomain in subdomains:
+        try:
+            result = subprocess.run(
+                ["dig", "+short", "CNAME", subdomain],
+                capture_output=True, text=True, timeout=10
+            )
+            cname = result.stdout.strip()
+            if cname:
+                for service in takeover_services:
+                    if service in cname:
+                        candidates.append({
+                            "subdomain": subdomain,
+                            "cname": cname,
+                            "service": service
+                        })
+                        break
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            continue
+
+    return candidates
+
+
+def generate_report(domain: str, subdomains: list, live_hosts: list,
+                    takeover_candidates: list, output_dir: str) -> str:
+    """Generate a markdown report of enumeration results."""
+    report_path = os.path.join(output_dir, f"{domain}_report.md")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(report_path, "w") as f:
+        f.write(f"# Subdomain Enumeration Report: {domain}\n\n")
+        f.write(f"**Date**: {timestamp}\n\n")
+        f.write(f"## Summary\n")
+        f.write(f"- **Total Subdomains Discovered**: {len(subdomains)}\n")
+        f.write(f"- **Live Hosts**: {len(live_hosts)}\n")
+        f.write(f"- **Takeover Candidates**: {len(takeover_candidates)}\n\n")
+
+        f.write("## Live Hosts\n\n")
+        f.write("| URL | Status | Title | Technologies |\n")
+        f.write("|-----|--------|-------|--------------|\n")
+        for host in live_hosts:
+            url = host.get("url", "N/A")
+            status = host.get("status_code", "N/A")
+            title = host.get("title", "N/A")
+            techs = ", ".join(host.get("tech", [])) if host.get("tech") else "N/A"
+
+-----
+[END PART 2/14] — رد غير "Received part 2/14"
